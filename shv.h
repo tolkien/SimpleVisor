@@ -82,7 +82,50 @@ typedef struct _SHV_VP_STATE
     BOOLEAN ExitVm;
 } SHV_VP_STATE, *PSHV_VP_STATE;
 
-VOID ShvVmxEntry(VOID);
-VOID ShvVmxCleanup(_In_ USHORT Data, _In_ USHORT Teb);
-VOID __lgdt(_In_ PVOID Gdtr);
+VOID
+ShvVmxEntry (
+    VOID
+    );
 
+VOID 
+ShvVmxCleanup (
+    _In_ USHORT Data,
+    _In_ USHORT Teb
+    );
+
+VOID
+__lgdt (
+    _In_ PVOID Gdtr
+    );
+
+VOID
+ShvVmxLaunchOnVp (
+    _In_ PSHV_VP_DATA VpData
+    );
+
+VOID
+ShvUtilConvertGdtEntry (
+    _In_ PVOID GdtBase,
+    _In_ USHORT Offset,
+    _Out_ PVMX_GDTENTRY64 VmxGdtEntry
+    );
+
+ULONG
+ShvUtilAdjustMsr (
+    _In_ LARGE_INTEGER ControlValue,
+    _In_ ULONG DesiredValue
+    );
+
+PSHV_GLOBAL_DATA
+ShvVpAllocateGlobalData (
+    VOID
+    );
+
+BOOLEAN
+ShvVmxProbe (
+    VOID
+    );
+
+KDEFERRED_ROUTINE ShvVpCallbackDpc;
+
+extern PSHV_GLOBAL_DATA ShvGlobalData;

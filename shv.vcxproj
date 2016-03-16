@@ -40,7 +40,7 @@
     <Link />
     <Link>
       <AdditionalDependencies>$(KernelBufferOverflowLib);$(DDK_LIB_PATH)ntoskrnl.lib;$(DDK_LIB_PATH)hal.lib;$(DDK_LIB_PATH)wmilib.lib</AdditionalDependencies>
-      <EntryPointSymbol>DriverEntry</EntryPointSymbol>
+      <EntryPointSymbol>ShvInitialize</EntryPointSymbol>
       <LinkTimeCodeGeneration>UseLinkTimeCodeGeneration</LinkTimeCodeGeneration>
       <Profile>false</Profile>
       <MergeSections>_TEXT=.text;_PAGE=PAGE</MergeSections>
@@ -52,6 +52,10 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="shv.c" />
+    <ClCompile Include="shvutil.c" />
+    <ClCompile Include="shvvmx.c" />
+    <ClCompile Include="shvvmxhv.c" />
+    <ClCompile Include="shvvp.c" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="shv.h" />
