@@ -1,3 +1,25 @@
+/*++
+
+Copyright (c) Alex Ionescu.  All rights reserved.
+
+Header Name:
+
+    ntint.h
+
+Abstract:
+
+    This header contains selected NT structures and functions from ntosp.h
+
+Author:
+
+    Alex Ionescu (@aionescu)    16-Mar-2016 - Initial version
+
+Environment:
+
+    Kernel mode only.
+
+--*/
+
 #pragma once
 
 //
@@ -59,17 +81,6 @@ typedef struct _KPROCESSOR_STATE {
     KSPECIAL_REGISTERS SpecialRegisters;
     CONTEXT ContextFrame;
 } KPROCESSOR_STATE, *PKPROCESSOR_STATE;
-
-//
-// Define Global Descriptor Table (GDT) entry structure and constants.
-//
-// Define descriptor type codes.
-//
-#define TYPE_LDT 0x02                     // 00010 = system ldt
-#define TYPE_CODE 0x1B                  // 11011 = code, read only, accessed
-#define TYPE_DATA 0x13                  // 10011 = data, read and write, accessed
-#define TYPE_TSS64 0x09                 // 01001 = task state segment
-#define TYPE_TSS64_ACTIVE 0x0B  
 
 //
 // Define descriptor privilege levels for user and system.

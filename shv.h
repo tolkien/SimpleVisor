@@ -1,3 +1,25 @@
+/*++
+
+Copyright (c) Alex Ionescu.  All rights reserved.
+
+Header Name:
+
+    shv.h
+
+Abstract:
+
+    This header defines the structures and functions of the Simple Hyper Visor.
+
+Author:
+
+    Alex Ionescu (alex.ionescu@reactos.com)   16-Mar-2016
+
+Environment:
+
+    Kernel mode only.
+
+--*/
+
 #pragma once
 #pragma warning(disable:4201)
 #pragma warning(disable:4214)

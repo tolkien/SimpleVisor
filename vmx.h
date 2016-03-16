@@ -1,3 +1,25 @@
+/*++
+
+Copyright (c) Alex Ionescu.  All rights reserved.
+
+Header Name:
+
+    vmx.h
+
+Abstract:
+
+    This header defines the MSRs and VMCS fields for Intel x64 VT-x support.
+
+Author:
+
+    Alex Ionescu (alex.ionescu@reactos.com)   16-Mar-2016
+
+Environment:
+
+    Kernel mode only.
+
+--*/
+
 #pragma once
 
 #define CPU_BASED_VIRTUAL_INTR_PENDING          0x00000004
