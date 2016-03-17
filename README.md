@@ -15,7 +15,7 @@ Note that x86 versions of Windows are expressly not supported, nor are processor
 
 ## Motivation
 
-Too many hypervisor projects out there are either extremely complicated (Xen[1], KVM, VirtualBox) and/or closed-source (VMware, Hyper-V), as well as heavily focused toward Linux-based development or system. Additionally, most (other than Hyper-V) of them are expressly built for the purpose of enabling the execution of virtual machines, and not the virtualization of a live, running system, in order to perform introspection or other security-related tasks on it.
+Too many hypervisor projects out there are either extremely complicated (Xen[Xen][1], KVM, VirtualBox) and/or closed-source (VMware, Hyper-V), as well as heavily focused toward Linux-based development or system. Additionally, most (other than Hyper-V) of them are expressly built for the purpose of enabling the execution of virtual machines, and not the virtualization of a live, running system, in order to perform introspection or other security-related tasks on it.
 
 A few projects do stand out from the fold however, such as the original Blue Pill[2] from Johanna, or projects such as VirtDbg[3] and HyperDbg[4]. Unfortunately, most of these have become quite old by now, and some only function on x86 processors, and don't support newer operating systems such as Windows 10.
 
@@ -51,7 +51,7 @@ You must have administrative rights for usage of any of these commands.
 ## References
 
 [3]:https://github.com/upring/virtdbg
-[1]:http://xenbits.xen.org/gitweb/?p=xen.git;a=summary
+[1]:http://xenbits.xen.org/gitweb/?p=xen.git;a=summary "Xen"
 [6]:https://github.com/svn2github/bochs
 [4]:https://github.com/rmusser01/hyperdbg
 [2]:http://invisiblethingslab.com/resources/bh07/nbp-0.32-public.zip
