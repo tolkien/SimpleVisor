@@ -2,7 +2,7 @@
 
 Copyright (c) Alex Ionescu.  All rights reserved.
 
-Header Name:
+Module Name:
 
     shv.c
 
@@ -12,7 +12,7 @@ Abstract:
 
 Author:
 
-    Alex Ionescu (alex.ionescu@reactos.com)   16-Mar-2016
+    Alex Ionescu (@aionescu) 16-Mar-2016 - Initial version
 
 Environment:
 

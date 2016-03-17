@@ -2,7 +2,7 @@
 
 Copyright (c) Alex Ionescu.  All rights reserved.
 
-Header Name:
+Module Name:
 
     shvvmx.c
 
@@ -12,11 +12,11 @@ Abstract:
 
 Author:
 
-    Alex Ionescu (alex.ionescu@reactos.com)   16-Mar-2016
+    Alex Ionescu (@aionescu) 16-Mar-2016 - Initial version
 
 Environment:
 
-    Kernel mode only.
+    Kernel mode only, IRQL DISPATCH_LEVEL.
 
 --*/
 
@@ -365,6 +365,16 @@ ShvVmxLaunchOnVp (
     _In_ PSHV_VP_DATA VpData
     )
 {
+    ULONG i;
+
+    //
+    // Initialize all the VMX-related MSRs by reading their value
+    //
+    for (i = 0; i < RTL_NUMBER_OF(VpData->MsrData); i++)
+    {
+        VpData->MsrData[i].QuadPart = __readmsr(MSR_IA32_VMX_BASIC + i);
+    }
+
     //
     // Attempt to enter VMX root mode on this processor.
     //
