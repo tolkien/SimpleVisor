@@ -1,17 +1,24 @@
 # SimpleVisor
 
-A simple, Intel x64 Windows-specific Hypervisor with two specific goals: the least amount of assembly code (10 lines), and the smallest amount of VMX-related code to support dynamic hyperjacking and unhyperjacking. 
+SimpleVisor is a simple, Intel x64 Windows-specific hypervisor with two specific goals: using the least amount of assembly code (10 lines), and having the smallest amount of VMX-related code to support dynamic hyperjacking and unhyperjacking (that is, virtualizing the host state from within the host).
 
 ## Introduction
 
-SimpleVisor can be built with any recent copy of Visual Studio 2015. Other compilers have not been tested and are not supported.
-It has currently been tested on the following platforms succesfully:
+Have you always been curious on how to build a hypervisor? Has Intel's documentation (the many hundreds of pages) gotten you down? Have the samples you've found online just made things more confusing, or required weeks of reading through dozens of thousands of lines and code? If so, SimpleVisor might be the project for you.
+
+Not counting the exhaustive comments which explain every single line of code, and specific Windows-related or Intel-related idiosyncracies, SimpleVisor clocks in at about 500 lines of C code, and 10 lines of x64 assembly code, all while containing the ability to run on every recent version of 64-bit Windows, and supporting dynamic load/unload at runtime.
+
+SimpleVisor can be built with any recent copy of Visual Studio 2015, and while older compilers have not been tested and are not supported, it's likely that they can build the project as well. It's important, however, to keep the various compiler and linker settings as you see them, however.
+
+SimpleVisor has currently been tested on the following platforms succesfully:
 
 * Windows 8.1 on a Haswell Processor
 * Windows 10 Redstone 1 on a Sandy Bridge Processor
 * Windows 10 Threshold 2 on a Skylake Processor
 
-Note that x86 versions of Windows are expressly not supported, nor are processors earlier than the Nehalem microarchitecture.
+At this time, it has not been tested on any Virtual Machine, but barring any bugs in the implementations of either Bochs or VMWare, there's no reason why SimpleVisor could not run in those environments as well. However, if your machine is already running under a hypervisor such as Hyper-V or Xen, SimpleVisor will not load.
+
+Keep in mind that x86 versions of Windows are expressly not supported, nor are processors earlier than the Nehalem microarchitecture.
 
 ## Motivation
 
@@ -32,9 +39,19 @@ The express goal of this project, as stated above, was to minimize code in any w
 
 Another implied goal was to support the very latest in hardware features, as even [Bochs][6] doesn't always have the very-latest Intel VMX instructions and/or definitions. These are often found in header files such as "vmcs.h" and "vmx.h" that various projects have at various levels of definition. For example, Xen master has some unreleased VM Exit reasons, but not certain released ones, which Bochs does have, albeit it doesn't have the unreleased ones!
 
+Finally, SimpleVisor is meant to be an educational tool -- it has exhaustive comments explaining all logic behind each line of code, and specific Windows or Intel VMX tips and tricks that allow it to achieve its desired outcome. Various bugs or poorly documented behaviors are called out explicitly.
+
 ## Installation
 
-You can setup the required entries for SimpleVisor in the registry with the following command:
+Because x64 Windows requires all drivers to be signed, you must testsign the SimpleVisor binary. The Visual Studio project file can be setup to do so by using the "Driver Signing" options and enabling "Test Sign" with your own certificate. From the UI, you can also generate your own.
+
+Secondly, you must enable Test Signing Mode on your machine. To do so, first boot into UEFI to turn off "Secure Boot", otherwise Test Signing mode cannot be enabled. Alternatively, if you possess a valid KMCS certificate, you may "Production Sign" the driver to avoid this requirement.
+
+To setup Test Signing Mode, you can use the folowing command:
+
+```bcdedit /set testsigning on```
+
+After a reboot, you can then setup the required Service Control Manager entries for SimpleVisor in the registry with the following command:
 
 ```sc create simplevisor type= kernel binPath= "<PATH_TO_SIMPLEVISOR.SYS>"```
 
@@ -68,6 +85,10 @@ https://github.com/tandasat/HyperPlatform
 [4]:https://github.com/rmusser01/hyperdbg
 [2]:http://invisiblethingslab.com/resources/bh07/nbp-0.32-public.zip
 [5]:https://github.com/tandasat/HyperPlatform
+
+## Caveats
+
+SimpleVisor is designed to minimize code size and complexity -- this does come at a cost of robustness. For example, even though many VMX operations performed by SimpleVisor "should" never fail, there are always unknown reasons, such as memory corruption, CPU errata, invalid host OS state, and potential bugs, which can cause certain operations to fail. For truly robust, commercial-grade software, these possibilities must be taken into account, and error handling, exception handling, and checks must be added to support them. Additionally, the vast array of BIOSes out there, and different CPU and chipset iterations, can each have specific incompatibilities or work-arounds that must be checked for. ***SimpleVisor does not do any such error checking, validation, and exception handling. It is not robust software designed for production use, but rather a reference code base***.
 
 ## License
 
