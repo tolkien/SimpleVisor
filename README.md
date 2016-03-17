@@ -26,7 +26,7 @@ Too many hypervisor projects out there are either extremely complicated ([Xen][1
 
 A few projects do stand out from the fold however, such as the original [Blue Pill][2] from Johanna, or projects such as [VirtDbg][3] and [HyperDbg][4]. Unfortunately, most of these have become quite old by now, and some only function on x86 processors, and don't support newer operating systems such as Windows 10.
 
-The closest project that actually delivers a Windows-centric, modern, and supported hypervisor is [HyperPlatform][5], and we strongly recommend its use as a starting place for more broadly usable research-type hypervisor development. However, in attempting to create a generic "platform" that can be productized, HyperPlatform also suffers from a bit of bloat, making it harder to understand what truly are the basic needs of a hypervisor, and how to initialize one.
+The closest project that actually delivers a Windows-centric, modern, and supported hypervisor is [HyperPlatform][5], and we strongly recommend its use as a starting place for more broadly usable research-type hypervisor development. However, in attempting to create a generic "platform" that is more broadly robust, HyperPlatform also suffers from a bit of bloat, making it harder to understand what truly are the basic needs of a hypervisor, and how to initialize one.
 
 The express goal of this project, as stated above, was to minimize code in any way possible, without causing negative side-effects, and focusing on the 'bare-metal' needs. This includes:
 
