@@ -36,11 +36,11 @@
 
 <p>Have you always been curious on how to build a hypervisor? Has Intel's documentation (the many hundreds of pages) gotten you down? Have the samples you've found online just made things more confusing, or required weeks of reading through dozens of thousands of lines and code? If so, SimpleVisor might be the project for you.</p>
 
-<p>Not counting the exhaustive comments which explain every single line of code, and specific Windows-related or Intel-related idiosyncracies, SimpleVisor clocks in at about 500 lines of C code, and 10 lines of x64 assembly code, all while containing the ability to run on every recent version of 64-bit Windows, and supporting dynamic load/unload at runtime.</p>
+<p>Not counting the exhaustive comments which explain every single line of code, and specific Windows-related or Intel-related idiosyncrasies, SimpleVisor clocks in at about 500 lines of C code, and 10 lines of x64 assembly code, all while containing the ability to run on every recent version of 64-bit Windows, and supporting dynamic load/unload at runtime.</p>
 
 <p>SimpleVisor can be built with any recent copy of Visual Studio 2015, and while older compilers have not been tested and are not supported, it's likely that they can build the project as well. It's important, however, to keep the various compiler and linker settings as you see them, however.</p>
 
-<p>SimpleVisor has currently been tested on the following platforms succesfully:</p>
+<p>SimpleVisor has currently been tested on the following platforms successfully:</p>
 
 <ul>
 <li>Windows 8.1 on a Haswell Processor (Custom Desktop)</li>
@@ -65,10 +65,10 @@
 <p>The express goal of this project, as stated above, was to minimize code in any way possible, without causing negative side-effects, and focusing on the 'bare-metal' needs. This includes:</p>
 
 <ul>
-<li>Minimizing use of assembly code. If it weren't for the lack of an __lgdt intrinsic, and a workaround for the behavior of a Windows API, only the first 4 instructions of the hypervisor's entry point would require assembly. As it stands, the project has a total of 10 instructions, spread throughout 3 functions. This is a maassive departure from other hypervisor projects, which often have multiple hundreds of line of assembly code. A variety of Windows-specific and compiler-specific tricks are used to achieve this, which will be described in the source code.</li>
+<li>Minimizing use of assembly code. If it weren't for the lack of an __lgdt intrinsic, and a workaround for the behavior of a Windows API, only the first 4 instructions of the hypervisor's entry point would require assembly. As it stands, the project has a total of 10 instructions, spread throughout 3 functions. This is a massive departure from other hypervisor projects, which often have multiple hundreds of line of assembly code. A variety of Windows-specific and compiler-specific tricks are used to achieve this, which will be described in the source code.</li>
 <li>Reducing checks for errors which are unlikely to happen. Given a properly configured, and trusted, set of input data, instructions such as vmx_vmwrite and vmx_vmread should never fail, for example.</li>
 <li>Removing support for x86, which complicates matters and causes special handling around 64-bit fields.</li>
-<li>Expressely reducing all possible VM-Exits to only the Intel architecturally defined minimum (CPUID, INVD, VMX Instructions, and XSETBV). This is purposefully done to keep the hypervisor as small as possible, as well as the initialization code.</li>
+<li>Expressly reducing all possible VM-Exits to only the Intel architecturally defined minimum (CPUID, INVD, VMX Instructions, and XSETBV). This is purposefully done to keep the hypervisor as small as possible, as well as the initialization code.</li>
 <li>No support for VMCALL. Many hypervisors use VMCALL as a way to exit the hypervisor, which requires assembly programming (there is no intrinsic) and additional exit handling. SimpleVisor uses a CPUID trap instead.</li>
 <li>Relying on little-known Windows functions to simplify development of the hypervisor, such as Generic DPCs and hibernation contexts.</li>
 </ul>
@@ -84,7 +84,7 @@
 
 <p>Secondly, you must enable Test Signing Mode on your machine. To do so, first boot into UEFI to turn off "Secure Boot", otherwise Test Signing mode cannot be enabled. Alternatively, if you possess a valid KMCS certificate, you may "Production Sign" the driver to avoid this requirement.</p>
 
-<p>To setup Test Signing Mode, you can use the folowing command:</p>
+<p>To setup Test Signing Mode, you can use the following command:</p>
 
 <p><code>bcdedit /set testsigning on</code></p>
 
@@ -120,7 +120,7 @@
 <h2>
 <a id="caveats" class="anchor" href="#caveats" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>Caveats</h2>
 
-<p>SimpleVisor is designed to minimize code size and complexity -- this does come at a cost of robustness. For example, even though many VMX operations performed by SimpleVisor "should" never fail, there are always unknown reasons, such as memory corruption, CPU errata, invalid host OS state, and potential bugs, which can cause certain operations to fail. For truly robust, commercial-grade software, these possibilities must be taken into account, and error handling, exception handling, and checks must be added to support them. Additionally, the vast array of BIOSes out there, and different CPU and chipset iterations, can each have specific incompatibilities or work-arounds that must be checked for. <strong><em>SimpleVisor does not do any such error checking, validation, and exception handling. It is not robust software designed for production use, but rather a reference code base</em></strong>.</p>
+<p>SimpleVisor is designed to minimize code size and complexity -- this does come at a cost of robustness. For example, even though many VMX operations performed by SimpleVisor "should" never fail, there are always unknown reasons, such as memory corruption, CPU errata, invalid host OS state, and potential bugs, which can cause certain operations to fail. For truly robust, commercial-grade software, these possibilities must be taken into account, and error handling, exception handling, and checks must be added to support them. Additionally, the vast array of BIOSes out there, and different CPU and chipset iterations, can each have specific incompatibilities or workarounds that must be checked for. <strong><em>SimpleVisor does not do any such error checking, validation, and exception handling. It is not robust software designed for production use, but rather a reference code base</em></strong>.</p>
 
 <h2>
 <a id="license" class="anchor" href="#license" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a>License</h2>
