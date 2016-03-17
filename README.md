@@ -34,7 +34,7 @@ The express goal of this project, as stated above, was to minimize code in any w
 
 You can setup the required entries for SimpleVisor in the registry with the following command:
 
-```sc create simplevisor type= kernel binPath= "<PATH_TO_SIMPLEVISOR.SYS>"`
+```sc create simplevisor type= kernel binPath= "<PATH_TO_SIMPLEVISOR.SYS>"```
 
 You can then launch SimpleVisor with
 
