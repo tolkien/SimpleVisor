@@ -21,7 +21,7 @@ A few projects do stand out from the fold however, such as the original Blue Pil
 
 The closest project that actually delivers a Windows-centric, modern, and supported hypervisor is HyperPlatform, and the author strongly recommends its use as a starting place for commercial and/or production-worthy hypervisor development. However, in attempting to create a generic "platform" that can be productized, HyperPlatform also suffers from a bit of bloat, making it harder to understand what truly are the basic needs of a hypervisor, and how to initialize one.
 
-The express goal of this project, as stated above, was to minimize code in any way possible, without causing negative side-effects, and confusing on the 'bare-metal' needs. This includes:
+The express goal of this project, as stated above, was to minimize code in any way possible, without causing negative side-effects, and focusing on the 'bare-metal' needs. This includes:
 
 * Minimizing use of assembly code. If it weren't for the lack of an __lgdt intrinsic, and a workaround for the behavior of a Windows API, only the first 4 instructions of the hypervisor's entry point would require assembly. As it stands, the project has a total of 10 instructions, spread throughout 3 functions. This is a maassive departure from other hypervisor projects, which often have multiple hundreds of line of assembly code. A variety of Windows-specific and compiler-specific tricks are used to achieve this, which will be described in the source code.
 * Reducing checks for errors which are unlikely to happen. Given a properly configured, and trusted, set of input data, instructions such as vmx_vmwrite and vmx_vmread should never fail, for example.
@@ -45,6 +45,15 @@ And stop it with
 ```net stop simplevisor```
 
 You must have administrative rights for usage of any of these commands.
+
+## References
+
+https://github.com/upring/virtdbg
+http://xenbits.xen.org/gitweb/?p=xen.git;a=summary
+https://github.com/svn2github/bochs
+https://github.com/rmusser01/hyperdbg
+http://invisiblethingslab.com/resources/bh07/nbp-0.32-public.zip
+https://github.com/tandasat/HyperPlatform
 
 ## License
 
