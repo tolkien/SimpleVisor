@@ -50,6 +50,18 @@ You must have administrative rights for usage of any of these commands.
 
 ## References
 
+https://github.com/upring/virtdbg
+
+http://xenbits.xen.org/gitweb/?p=xen.git;a=summary
+
+https://github.com/svn2github/bochs
+
+https://github.com/rmusser01/hyperdbg
+
+http://invisiblethingslab.com/resources/bh07/nbp-0.32-public.zip
+
+https://github.com/tandasat/HyperPlatform
+
 [3]:https://github.com/upring/virtdbg
 [1]:http://xenbits.xen.org/gitweb/?p=xen.git;a=summary "Xen"
 [6]:https://github.com/svn2github/bochs
