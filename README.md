@@ -34,21 +34,22 @@ The express goal of this project, as stated above, was to minimize code in any w
 
 You can setup the required entries for SimpleVisor in the registry with the following command:
 
-```sc create simplevisor type= kernel binPath= "<PATH_TO_SIMPLEVISOR.SYS>"
+```sc create simplevisor type= kernel binPath= "<PATH_TO_SIMPLEVISOR.SYS>"`
 
 You can then launch SimpleVisor with
 
-```net start simplevisor
+```net start simplevisor```
 
 And stop it with
 
-```net stop simplevisor
+```net stop simplevisor```
 
 You must have administrative rights for usage of any of these commands.
 
 ## License
 
-```Copyright 2016 Alex Ionescu. All rights reserved. 
+```
+Copyright 2016 Alex Ionescu. All rights reserved. 
 
 Redistribution and use in source and binary forms, with or without modification, are permitted provided
 that the following conditions are met: 
@@ -70,3 +71,4 @@ ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 The views and conclusions contained in the software and documentation are those of the authors and
 should not be interpreted as representing official policies, either expressed or implied, of Alex Ionescu.
+```
