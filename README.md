@@ -15,11 +15,11 @@ Note that x86 versions of Windows are expressly not supported, nor are processor
 
 ## Motivation
 
-Too many hypervisor projects out there are either extremely complicated (Xen, KVM, VirtualBox) and/or closed-source (VMware, Hyper-V), as well as heavily focused toward Linux-based development or system. Additionally, most (other than Hyper-V) of them are expressly built for the purpose of enabling the execution of virtual machines, and not the virtualization of a live, running system, in order to perform introspection or other security-related tasks on it.
+Too many hypervisor projects out there are either extremely complicated (Xen[1], KVM, VirtualBox) and/or closed-source (VMware, Hyper-V), as well as heavily focused toward Linux-based development or system. Additionally, most (other than Hyper-V) of them are expressly built for the purpose of enabling the execution of virtual machines, and not the virtualization of a live, running system, in order to perform introspection or other security-related tasks on it.
 
-A few projects do stand out from the fold however, such as the original Blue Pill from Johanna, or projects such as VirtDbg and HyperDbg. Unfortunately, most of these have become quite old by now, and some only function on x86 processors, and don't support newer operating systems such as Windows 10.
+A few projects do stand out from the fold however, such as the original Blue Pill[2] from Johanna, or projects such as VirtDbg[3] and HyperDbg[4]. Unfortunately, most of these have become quite old by now, and some only function on x86 processors, and don't support newer operating systems such as Windows 10.
 
-The closest project that actually delivers a Windows-centric, modern, and supported hypervisor is HyperPlatform, and the author strongly recommends its use as a starting place for commercial and/or production-worthy hypervisor development. However, in attempting to create a generic "platform" that can be productized, HyperPlatform also suffers from a bit of bloat, making it harder to understand what truly are the basic needs of a hypervisor, and how to initialize one.
+The closest project that actually delivers a Windows-centric, modern, and supported hypervisor is HyperPlatform[5], and the author strongly recommends its use as a starting place for commercial and/or production-worthy hypervisor development. However, in attempting to create a generic "platform" that can be productized, HyperPlatform also suffers from a bit of bloat, making it harder to understand what truly are the basic needs of a hypervisor, and how to initialize one.
 
 The express goal of this project, as stated above, was to minimize code in any way possible, without causing negative side-effects, and focusing on the 'bare-metal' needs. This includes:
 
@@ -29,6 +29,8 @@ The express goal of this project, as stated above, was to minimize code in any w
 * Expressely reducing all possible VM-Exits to only the Intel architecturally defined minimum (CPUID, INVD, VMX Instructions, and XSETBV). This is purposefully done to keep the hypervisor as small as possible, as well as the initialization code.
 * No support for VMCALL. Many hypervisors use VMCALL as a way to exit the hypervisor, which requires assembly programming (there is no intrinsic) and additional exit handling. SimpleVisor uses a CPUID trap instead.
 * Relying on little-known Windows functions to simplify development of the hypervisor, such as Generic DPCs and hibernation contexts.
+
+Another implied goal was to support the very latest in hardware features, as even Bochs[6] doesn't always have the very-latest Intel VMX instructions and/or definitions. These are often found in header files such as "vmcs.h" and "vmx.h" that various projects have at various levels of definition. For example, Xen master has some unreleased VM Exit reasons, but not certain released ones, which Bochs does have, albeit it doesn't have the unreleased ones!
 
 ## Installation
 
@@ -48,17 +50,12 @@ You must have administrative rights for usage of any of these commands.
 
 ## References
 
-[https://github.com/upring/virtdbg]
-
-[http://xenbits.xen.org/gitweb/?p=xen.git;a=summary]
-
-[https://github.com/svn2github/bochs]
-
-[https://github.com/rmusser01/hyperdbg]
-
-[http://invisiblethingslab.com/resources/bh07/nbp-0.32-public.zip]
-
-[https://github.com/tandasat/HyperPlatform]
+[3]:https://github.com/upring/virtdbg
+[1]:http://xenbits.xen.org/gitweb/?p=xen.git;a=summary
+[6]:https://github.com/svn2github/bochs
+[4]:https://github.com/rmusser01/hyperdbg
+[2]:http://invisiblethingslab.com/resources/bh07/nbp-0.32-public.zip
+[5]:https://github.com/tandasat/HyperPlatform
 
 ## License
 
