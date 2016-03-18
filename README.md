@@ -15,7 +15,7 @@ SimpleVisor has currently been tested on the following platforms successfully:
 * Windows 8.1 on a Haswell Processor (Custom Desktop)
 * Windows 10 Redstone 1 on a Sandy Bridge Processor (Samsung 930 Laptop)
 * Windows 10 Threshold 2 on a Skylake Processor (Surface Pro 4 Tablet)
-* Windows 10 Threshold 2 on a Skylape Processor (Dell Inspiron 11-3153 w/ SGX)
+* Windows 10 Threshold 2 on a Skylake Processor (Dell Inspiron 11-3153 w/ SGX)
 
 At this time, it has not been tested on any Virtual Machine, but barring any bugs in the implementations of either Bochs or VMWare, there's no reason why SimpleVisor could not run in those environments as well. However, if your machine is already running under a hypervisor such as Hyper-V or Xen, SimpleVisor will not load.
 
