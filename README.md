@@ -80,6 +80,10 @@ http://invisiblethingslab.com/resources/bh07/nbp-0.32-public.zip
 
 https://github.com/tandasat/HyperPlatform
 
+https://github.com/ainfosec/MoRE
+
+https://github.com/Bareflank/hypervisor
+
 [3]:https://github.com/upring/virtdbg
 [1]:http://xenbits.xen.org/gitweb/?p=xen.git;a=summary "Xen"
 [6]:https://github.com/svn2github/bochs
