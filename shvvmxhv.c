@@ -206,13 +206,17 @@ ShvVmxEntryHandler (
     PSHV_VP_DATA vpData;
 
     //
-    // For performance and sanity reasons, do not allow any hardware interrupts
-    // to come in while we are inside of the hypervisor context. We still want
-    // the clock and IPIs to occur, though. Obviously don't allow any thread
-    // scheduling, DPCs, timers or APCs to interrupt us either. This means that
-    // we should spend very little time in the hypervisor (always a good thing)
+    // Because we run with interrupts disabled during the entire hypervisor's
+    // exit handling, raise the IRQL to HIGH_LEVEL which matches the reality of
+    // the situation. This will block IPIs and the clock interrupt timer, which
+    // means that it's critical to spend as little time here as possible. You
+    // can expect CLOCK_WATCHDOG_TIMEOUT bugchecks to happen otherwise. If you
+    // chose to enable interrupts note that this will result in further crashes
+    // as we are not on a correct OS stack, and you will be hitting crashes if
+    // RtlpCheckStackLimits is ever called, or if PatchGuard validates the RSP
+    // value.
     //
-    KeRaiseIrql(CLOCK_LEVEL - 1, &guestContext.GuestIrql);
+    KeRaiseIrql(HIGH_LEVEL, &guestContext.GuestIrql);
 
     //
     // Because we had to use RCX when calling RtlCaptureContext, its true value

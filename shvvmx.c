@@ -311,8 +311,12 @@ ShvVmxSetupVmcsForVp (
     // Load the hypervisor entrypoint and stack. We give ourselves a standard
     // size kernel stack (24KB) and bias for the context structure that the
     // hypervisor entrypoint will push on the stack, avoiding the need for RSP
-    // modifying instructions in the entrypoint.
+    // modifying instructions in the entrypoint. Note that the CONTEXT pointer
+    // and thus the stack itself, must be 16-byte aligned for ABI compatibility
+    // with AMD64 -- specifically, XMM operations will fail otherwise, such as
+    // the ones that RtlCaptureContext will perform.
     //
+    C_ASSERT((KERNEL_STACK_SIZE - sizeof(CONTEXT)) % 16 == 0);
     __vmx_vmwrite(HOST_RSP, (ULONG_PTR)VpData->ShvStackLimit + KERNEL_STACK_SIZE - sizeof(CONTEXT));
     __vmx_vmwrite(HOST_RIP, (ULONG_PTR)ShvVmxEntry);
 }
