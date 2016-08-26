@@ -100,6 +100,11 @@ ShvInitialize (
     }
 
     //
+    // Initialize the EPT structures
+    //
+    ShvVmxEptInitialize();
+
+    //
     // Attempt to enter VMX root mode on all logical processors. This will
     // broadcast a DPC interrupt which will execute the callback routine in
     // parallel on the LPs. Send the callback routine the physical address of

@@ -97,6 +97,17 @@ Environment:
 #define VMX_BASIC_INS_OUT_INFO                  (1ULL << 54)
 #define VMX_BASIC_DEFAULT1_ZERO                 (1ULL << 55)
 
+#define VMX_EPT_EXECUTE_ONLY_BIT                (1ULL)
+#define VMX_EPT_PAGE_WALK_4_BIT                 (1ULL << 6)
+#define VMX_EPTP_UC_BIT                         (1ULL << 8)
+#define VMX_EPTP_WB_BIT                         (1ULL << 14)
+#define VMX_EPT_2MB_PAGE_BIT                    (1ULL << 16)
+#define VMX_EPT_1GB_PAGE_BIT                    (1ULL << 17)
+#define VMX_EPT_INVEPT_BIT                      (1ULL << 20)
+#define VMX_EPT_AD_BIT                          (1ULL << 21)
+#define VMX_EPT_EXTENT_CONTEXT_BIT              (1ULL << 25)
+#define VMX_EPT_EXTENT_GLOBAL_BIT               (1ULL << 26)
+
 /* MSRs & bits used for VMX enabling */
 #define MSR_IA32_VMX_BASIC                      0x480
 #define MSR_IA32_VMX_PINBASED_CTLS              0x481

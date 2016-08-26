@@ -69,6 +69,68 @@ typedef struct DECLSPEC_ALIGN(PAGE_SIZE) _VMX_VMCS
     UCHAR Data[PAGE_SIZE - 8];
 } VMX_VMCS, *PVMX_VMCS;
 
+typedef struct _VMX_EPTP
+{
+    union
+    {
+        struct
+        {
+            ULONGLONG Type : 3;
+            ULONGLONG PageWalkLength : 3;
+            ULONGLONG EnableAccessAndDirtyFlags : 1;
+            ULONGLONG Reserved : 5;
+            ULONGLONG PageFrameNumber : 36;
+            ULONGLONG ReservedHigh : 16;
+        };
+        ULONGLONG AsUlonglong;
+    };
+} VMX_EPTP, *PVMX_EPTP;
+
+typedef struct _VMX_EPML4E
+{
+    union
+    {
+        struct
+        {
+            ULONGLONG Read : 1;
+            ULONGLONG Write : 1;
+            ULONGLONG Execute : 1;
+            ULONGLONG Reserved : 5;
+            ULONGLONG Accessed : 1;
+            ULONGLONG SoftwareUse : 3;
+            ULONGLONG PageFrameNumber : 36;
+            ULONGLONG ReservedHigh : 4;
+            ULONGLONG SoftwareUseHigh : 12;
+        };
+        ULONGLONG AsUlonglong;
+    };
+} VMX_EPML4E, *PVMX_EPML4E;
+
+typedef struct _VMX_HUGE_PDPTE
+{
+    union
+    {
+        struct
+        {
+            ULONGLONG Read : 1;
+            ULONGLONG Write : 1;
+            ULONGLONG Execute : 1;
+            ULONGLONG Type : 3;
+            ULONGLONG IgnorePat : 1;
+            ULONGLONG Large : 1;
+            ULONGLONG Accessed : 1;
+            ULONGLONG Dirty : 1;
+            ULONGLONG SoftwareUse : 2;
+            ULONGLONG Reserved : 18;
+            ULONGLONG PageFrameNumber : 18;
+            ULONGLONG ReservedHigh : 4;
+            ULONGLONG SoftwareUseHigh : 11;
+            ULONGLONG SupressVme : 1;
+        };
+        ULONGLONG AsUlonglong;
+    };
+} VMX_HUGE_PDPTE, *PVMX_HUGE_PDPTE;
+
 typedef struct _SHV_VP_DATA
 {
     KPROCESSOR_STATE HostState;
@@ -79,6 +141,7 @@ typedef struct _SHV_VP_DATA
     ULONGLONG VmxOnPhysicalAddress;
     ULONGLONG VmcsPhysicalAddress;
     ULONGLONG MsrBitmapPhysicalAddress;
+    ULONGLONG EptPml4PhysicalAddress;
 
     DECLSPEC_ALIGN(PAGE_SIZE) UCHAR ShvStackLimit[KERNEL_STACK_SIZE];
     VMX_VMCS VmxOn;
@@ -87,11 +150,21 @@ typedef struct _SHV_VP_DATA
 
 C_ASSERT(sizeof(SHV_VP_DATA) == (KERNEL_STACK_SIZE + 3 * PAGE_SIZE));
 
+C_ASSERT(sizeof(VMX_EPTP) == sizeof(ULONGLONG));
+C_ASSERT(sizeof(VMX_EPML4E) == sizeof(ULONGLONG));
+
+#define PML4E_ENTRY_COUNT 512
+#define PDPTE_ENTRY_COUNT 512
 typedef struct _SHV_GLOBAL_DATA
 {
     UCHAR MsrBitmap[PAGE_SIZE];
+    VMX_EPML4E Epml4[PML4E_ENTRY_COUNT];
+    VMX_HUGE_PDPTE Epdpt[PDPTE_ENTRY_COUNT];
     SHV_VP_DATA VpData[ANYSIZE_ARRAY];
 } SHV_GLOBAL_DATA, *PSHV_GLOBAL_DATA;
+
+C_ASSERT((FIELD_OFFSET(SHV_GLOBAL_DATA, Epml4) % PAGE_SIZE) == 0);
+C_ASSERT((FIELD_OFFSET(SHV_GLOBAL_DATA, Epdpt) % PAGE_SIZE) == 0);
 
 typedef struct _SHV_VP_STATE
 {
@@ -145,6 +218,11 @@ ShvVpAllocateGlobalData (
 
 BOOLEAN
 ShvVmxProbe (
+    VOID
+    );
+
+VOID
+ShvVmxEptInitialize (
     VOID
     );
 

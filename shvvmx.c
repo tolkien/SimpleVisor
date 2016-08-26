@@ -22,6 +22,37 @@ Environment:
 
 #include "shv.h"
 
+VOID
+ShvVmxEptInitialize (
+    VOID
+    )
+{
+    ULONGLONG i;
+    VMX_HUGE_PDPTE tempEpdpte;
+
+    //
+    // Fill out the EPML4E which covers the first 512GB of RAM
+    //
+    ShvGlobalData->Epml4[0].Read = 1;
+    ShvGlobalData->Epml4[0].Write = 1;
+    ShvGlobalData->Epml4[0].Execute = 1;
+    ShvGlobalData->Epml4[0].PageFrameNumber = MmGetPhysicalAddress(&ShvGlobalData->Epdpt).QuadPart / PAGE_SIZE;
+
+    //
+    // Fill out a RWX Write-back 1GB EPDPTE
+    //
+    tempEpdpte.AsUlonglong = 0;
+    tempEpdpte.Read = tempEpdpte.Write = tempEpdpte.Execute = 1;
+    tempEpdpte.Type = MTRR_TYPE_WB;
+    tempEpdpte.Large = 1;
+
+    //
+    // Construct EPT identity map for every 1GB of RAM
+    //
+    __stosq((PULONG64)ShvGlobalData->Epdpt, tempEpdpte.AsUlonglong, PDPTE_ENTRY_COUNT);
+    for (i = 0; i < PDPTE_ENTRY_COUNT; i++) ShvGlobalData->Epdpt[i].PageFrameNumber = i;
+}
+
 BOOLEAN
 ShvVmxEnterRootModeOnVp (
     _In_ PSHV_VP_DATA VpData
@@ -54,6 +85,16 @@ ShvVmxEnterRootModeOnVp (
     }
 
     //
+    // Ensure that EPT is available with the needed features SimpleVisor uses
+    //
+    if (((VpData->MsrData[12].QuadPart & VMX_EPT_PAGE_WALK_4_BIT) == 0) ||
+        ((VpData->MsrData[12].QuadPart & VMX_EPTP_WB_BIT) == 0) ||
+        ((VpData->MsrData[12].QuadPart & VMX_EPT_1GB_PAGE_BIT) == 0))
+    {
+        return FALSE;
+    }
+
+    //
     // Capture the revision ID for the VMXON and VMCS region
     //
     VpData->VmxOn.RevisionId = VpData->MsrData[0].LowPart;
@@ -65,6 +106,7 @@ ShvVmxEnterRootModeOnVp (
     VpData->VmxOnPhysicalAddress = MmGetPhysicalAddress(&VpData->VmxOn).QuadPart;
     VpData->VmcsPhysicalAddress = MmGetPhysicalAddress(&VpData->Vmcs).QuadPart;
     VpData->MsrBitmapPhysicalAddress = MmGetPhysicalAddress(ShvGlobalData->MsrBitmap).QuadPart;
+    VpData->EptPml4PhysicalAddress = MmGetPhysicalAddress(&ShvGlobalData->Epml4).QuadPart;
 
     //
     // Update CR0 with the must-be-zero and must-be-one requirements
@@ -121,11 +163,25 @@ ShvVmxSetupVmcsForVp (
 {
     PKPROCESSOR_STATE state = &VpData->HostState;
     VMX_GDTENTRY64 vmxGdtEntry;
+    VMX_EPTP vmxEptp;
 
     //
     // Begin by setting the link pointer to the required value for 4KB VMCS.
     //
     __vmx_vmwrite(VMCS_LINK_POINTER, MAXULONG64);
+
+    //
+    // Configure the EPTP
+    //
+    vmxEptp.AsUlonglong = 0;
+    vmxEptp.PageWalkLength = 3;
+    vmxEptp.Type = MTRR_TYPE_WB;
+    vmxEptp.PageFrameNumber = VpData->EptPml4PhysicalAddress / PAGE_SIZE;
+
+    //
+    // Load EPT Root Pointer
+    //
+    __vmx_vmwrite(EPT_POINTER, vmxEptp.AsUlonglong);
 
     //
     // Load the MSR bitmap. Unlike other bitmaps, not having an MSR bitmap will
@@ -139,9 +195,15 @@ ShvVmxSetupVmcsForVp (
     // ShvUtilAdjustMsr, these options will be ignored if this processor does
     // not actully support the instructions to begin with.
     //
+    // Also enable EPT support, for additional performance and ability to trap
+    // memory access efficiently.
+    //
     __vmx_vmwrite(SECONDARY_VM_EXEC_CONTROL,
                            ShvUtilAdjustMsr(VpData->MsrData[11],
-                                            SECONDARY_EXEC_ENABLE_RDTSCP | SECONDARY_EXEC_XSAVES));
+                                            SECONDARY_EXEC_ENABLE_RDTSCP |
+                                            SECONDARY_EXEC_XSAVES
+                                            | SECONDARY_EXEC_ENABLE_EPT
+                                            ));
 
     //
     // Enable no pin-based options ourselves, but there may be some required by
@@ -157,7 +219,8 @@ ShvVmxSetupVmcsForVp (
     //
     __vmx_vmwrite(CPU_BASED_VM_EXEC_CONTROL,
                            ShvUtilAdjustMsr(VpData->MsrData[14],
-                                            CPU_BASED_ACTIVATE_MSR_BITMAP | CPU_BASED_ACTIVATE_SECONDARY_CONTROLS));
+                                            CPU_BASED_ACTIVATE_MSR_BITMAP |
+                                            CPU_BASED_ACTIVATE_SECONDARY_CONTROLS));
 
     //
     // If any interrupts were pending upon entering the hypervisor, acknowledge
@@ -165,7 +228,8 @@ ShvVmxSetupVmcsForVp (
     //
     __vmx_vmwrite(VM_EXIT_CONTROLS,
                            ShvUtilAdjustMsr(VpData->MsrData[15],
-                                            VM_EXIT_ACK_INTR_ON_EXIT | VM_EXIT_IA32E_MODE));
+                                            VM_EXIT_ACK_INTR_ON_EXIT |
+                                            VM_EXIT_IA32E_MODE));
 
     //
     // As we exit back into the guest, make sure to exist in x64 mode as well.
