@@ -1,6 +1,6 @@
 # SimpleVisor
 
-SimpleVisor is a simple, Intel x64 Windows-specific hypervisor with two specific goals: using the least amount of assembly code (10 lines), and having the smallest amount of VMX-related code to support dynamic hyperjacking and unhyperjacking (that is, virtualizing the host state from within the host).
+SimpleVisor is a simple, Intel x64 Windows-specific hypervisor with two specific goals: using the least amount of assembly code (10 lines), and having the smallest amount of VMX-related code to support dynamic hyperjacking and unhyperjacking (that is, virtualizing the host state from within the host) while also supporting advanced features such as EPT and VPID.
 
 ## Introduction
 
@@ -14,12 +14,12 @@ SimpleVisor has currently been tested on the following platforms successfully:
 
 * Windows 8.1 on a Haswell Processor (Custom Desktop)
 * Windows 10 Redstone 1 on a Sandy Bridge Processor (Samsung 930 Laptop)
-* Windows 10 Threshold 2 on a Skylake Processor (Surface Pro 4 Tablet)
+* Windows 10 Threshold 2/Redstone 1 on a Skylake Processor (Surface Pro 4 Tablet)
 * Windows 10 Threshold 2 on a Skylake Processor (Dell Inspiron 11-3153 w/ SGX)
 
 At this time, it has not been tested on any Virtual Machine, but barring any bugs in the implementations of either Bochs or VMWare, there's no reason why SimpleVisor could not run in those environments as well. However, if your machine is already running under a hypervisor such as Hyper-V or Xen, SimpleVisor will not load.
 
-Keep in mind that x86 versions of Windows are expressly not supported, nor are processors earlier than the Nehalem microarchitecture.
+Keep in mind that x86 versions of Windows are expressly not supported, nor are processors earlier than the Nehalem microarchitecture, nor is Windows 7. Support for the latter two is easy to add and exists in certain forks.
 
 ## Motivation
 
@@ -37,6 +37,7 @@ The express goal of this project, as stated above, was to minimize code in any w
 * Expressly reducing all possible VM-Exits to only the Intel architecturally defined minimum (CPUID, INVD, VMX Instructions, and XSETBV). This is purposefully done to keep the hypervisor as small as possible, as well as the initialization code.
 * No support for VMCALL. Many hypervisors use VMCALL as a way to exit the hypervisor, which requires assembly programming (there is no intrinsic) and additional exit handling. SimpleVisor uses a CPUID trap instead.
 * Relying on little-known Windows functions to simplify development of the hypervisor, such as Generic DPCs and hibernation contexts.
+* Supporting EPT/VPID in a very simple fashion, to demonstrate a solid base of the simplest possible implementation of the feature.
 
 Another implied goal was to support the very latest in hardware features, as even [Bochs][6] doesn't always have the very-latest Intel VMX instructions and/or definitions. These are often found in header files such as "vmcs.h" and "vmx.h" that various projects have at various levels of definition. For example, Xen master has some unreleased VM Exit reasons, but not certain released ones, which Bochs does have, albeit it doesn't have the unreleased ones!
 
@@ -58,11 +59,11 @@ After a reboot, you can then setup the required Service Control Manager entries 
 
 You can then launch SimpleVisor with
 
-```net start simplevisor```
+```sc start simplevisor```
 
 And stop it with
 
-```net stop simplevisor```
+```sc stop simplevisor```
 
 You must have administrative rights for usage of any of these commands.
 
