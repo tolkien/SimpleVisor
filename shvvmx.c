@@ -184,6 +184,11 @@ ShvVmxSetupVmcsForVp (
     __vmx_vmwrite(EPT_POINTER, vmxEptp.AsUlonglong);
 
     //
+    // Set VPID to one
+    //
+    __vmx_vmwrite(VIRTUAL_PROCESSOR_ID, 1);
+
+    //
     // Load the MSR bitmap. Unlike other bitmaps, not having an MSR bitmap will
     // trap all MSRs, so have to allocate an empty one.
     //
@@ -201,8 +206,9 @@ ShvVmxSetupVmcsForVp (
     __vmx_vmwrite(SECONDARY_VM_EXEC_CONTROL,
                            ShvUtilAdjustMsr(VpData->MsrData[11],
                                             SECONDARY_EXEC_ENABLE_RDTSCP |
-                                            SECONDARY_EXEC_XSAVES
-                                            | SECONDARY_EXEC_ENABLE_EPT
+                                            SECONDARY_EXEC_XSAVES |
+                                            SECONDARY_EXEC_ENABLE_EPT |
+                                            SECONDARY_EXEC_ENABLE_VPID
                                             ));
 
     //
