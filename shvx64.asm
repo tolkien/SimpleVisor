@@ -25,6 +25,20 @@ include ksamd64.inc
     extern ShvVmxEntryHandler:proc
     extern RtlCaptureContext:proc
 
+    LEAF_ENTRY _str, _TEXT$00
+
+    str word ptr [rcx]          ; Store TR value
+    ret                         ; Return
+
+    LEAF_END _str, _TEXT$00
+
+    LEAF_ENTRY _sldt, _TEXT$00
+
+    sldt word ptr [rcx]         ; Store LDTR value
+    ret                         ; Return
+
+    LEAF_END _sldt, _TEXT$00
+
     NESTED_ENTRY ShvVmxEntry, _TEXT$00
 
     push_reg rcx                ; save RCX, as we will need to orverride it

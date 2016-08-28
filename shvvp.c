@@ -23,18 +23,41 @@ Environment:
 #include "shv.h"
 
 VOID
+ShvCaptureSpecialRegisters (
+    _In_ PSHV_SPECIAL_REGISTERS SpecialRegisters
+    )
+{
+    //
+    // Use compiler intrinsics to get the data we need
+    //
+    SpecialRegisters->Cr0 = __readcr0();
+    SpecialRegisters->Cr3 = __readcr3();
+    SpecialRegisters->Cr4 = __readcr4();
+    SpecialRegisters->DebugControl = __readmsr(MSR_DEBUG_CTL);
+    SpecialRegisters->MsrGsBase = __readmsr(MSR_GS_BASE);
+    SpecialRegisters->KernelDr7 = __readdr(7);
+    _sgdt(&SpecialRegisters->Gdtr.Limit);
+    __sidt(&SpecialRegisters->Idtr.Limit);
+
+    //
+    // Use assembly to get these two
+    //
+    _str(&SpecialRegisters->Tr);
+    _sldt(&SpecialRegisters->Ldtr);
+}
+
+VOID
 ShvVpInitialize (
     _In_ PSHV_VP_DATA Data,
     _In_ ULONG64 SystemDirectoryTableBase
     )
 {
     //
-    // Store the hibernation state of the processor, which contains all the
-    // special registers and MSRs which are what the VMCS will need as part
-    // of its setup. This avoids using assembly sequences and manually reading
-    // this data.
+    // Read the special control registers for this processor
+    // Note: KeSaveStateForHibernate(&Data->HostState) can be used as a Windows
+    // specific undocumented function that can also get this data.
     //
-    KeSaveStateForHibernate(&Data->HostState);
+    ShvCaptureSpecialRegisters(&Data->SpecialRegisters);
 
     //
     // Then, capture the entire register state. We will need this, as once we
@@ -46,7 +69,7 @@ ShvVpInitialize (
     // purpose registers, we guarantee that we return with all of our starting
     // register values as well!
     //
-    RtlCaptureContext(&Data->HostState.ContextFrame);
+    RtlCaptureContext(&Data->ContextFrame);
 
     //
     // As per the above, we might be here because the VM has actually launched.
@@ -76,7 +99,7 @@ ShvVpInitialize (
         // optimized accesses, guaranteeing that no previous register state
         // will be used.
         //
-        RtlRestoreContext(&ShvGlobalData->VpData[KeGetCurrentProcessorNumberEx(NULL)].HostState.ContextFrame, NULL);
+        RtlRestoreContext(&ShvGlobalData->VpData[KeGetCurrentProcessorNumberEx(NULL)].ContextFrame, NULL);
     }
     //
     // If we are in this branch comparison, it means that we have not yet

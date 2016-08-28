@@ -105,7 +105,14 @@ ShvVmxHandleCpuid (
         // Set the Hypervisor Present-bit in RCX, which Intel and AMD have both
         // reserved for this indication.
         //
-        cpu_info[2] |= 0x80000000;
+        cpu_info[2] |= HYPERV_HYPERVISOR_PRESENT_BIT;
+    }
+    else if (VpState->VpRegs->Rax == HYPERV_CPUID_INTERFACE)
+    {
+        //
+        // Return our interface identifier
+        //
+        cpu_info[0] = ' vhS';
     }
 
     //
@@ -262,8 +269,8 @@ ShvVmxEntryHandler (
         // eventually crash the system. Since we know what the original state
         // of the GDTR and IDTR was, simply restore it now.
         //
-        __lgdt(&vpData->HostState.SpecialRegisters.Gdtr.Limit);
-        __lidt(&vpData->HostState.SpecialRegisters.Idtr.Limit);
+        __lgdt(&vpData->SpecialRegisters.Gdtr.Limit);
+        __lidt(&vpData->SpecialRegisters.Idtr.Limit);
 
         //
         // Our DPC routine may have interrupted an arbitrary user process, and

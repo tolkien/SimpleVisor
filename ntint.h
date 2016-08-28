@@ -32,56 +32,6 @@ typedef struct _KDESCRIPTOR {
     PVOID Base;
 } KDESCRIPTOR, *PKDESCRIPTOR;
 
-typedef struct _KDESCRIPTOR32 {
-    USHORT Pad[3];
-    USHORT Limit;
-    ULONG Base;
-} KDESCRIPTOR32, *PKDESCRIPTOR32;
-
-//
-// Define special kernel registers and the initial MXCSR value.
-//
-
-typedef struct _KSPECIAL_REGISTERS {
-    ULONG64 Cr0;
-    ULONG64 Cr2;
-    ULONG64 Cr3;
-    ULONG64 Cr4;
-    ULONG64 KernelDr0;
-    ULONG64 KernelDr1;
-    ULONG64 KernelDr2;
-    ULONG64 KernelDr3;
-    ULONG64 KernelDr6;
-    ULONG64 KernelDr7;
-    KDESCRIPTOR Gdtr;
-    KDESCRIPTOR Idtr;
-    USHORT Tr;
-    USHORT Ldtr;
-    ULONG MxCsr;
-    ULONG64 DebugControl;
-    ULONG64 LastBranchToRip;
-    ULONG64 LastBranchFromRip;
-    ULONG64 LastExceptionToRip;
-    ULONG64 LastExceptionFromRip;
-    ULONG64 Cr8;
-    ULONG64 MsrGsBase;
-    ULONG64 MsrGsSwap;
-    ULONG64 MsrStar;
-    ULONG64 MsrLStar;
-    ULONG64 MsrCStar;
-    ULONG64 MsrSyscallMask;
-    ULONG64 Xcr0;
-} KSPECIAL_REGISTERS, *PKSPECIAL_REGISTERS;
-
-//
-// Define processor state structure.
-//
-
-typedef struct _KPROCESSOR_STATE {
-    KSPECIAL_REGISTERS SpecialRegisters;
-    CONTEXT ContextFrame;
-} KPROCESSOR_STATE, *PKPROCESSOR_STATE;
-
 //
 // Define descriptor privilege levels for user and system.
 //
@@ -120,6 +70,9 @@ typedef struct _KPROCESSOR_STATE {
 #define KGDT64_SYS_TSS      0x40
 #define KGDT64_R3_CMTEB     0x50
 #define KGDT64_R0_LDT       0x60
+
+#define MSR_GS_BASE         0xC0000101
+#define MSR_DEBUG_CTL       0x1D9
 
 #define RPL_MASK 3
 
@@ -196,38 +149,3 @@ RtlRestoreContext(
     _In_ PCONTEXT ContextRecord,
     _In_opt_ struct _EXCEPTION_RECORD * ExceptionRecord
     );
-
-NTKERNELAPI
-VOID
-__cdecl
-KeSaveStateForHibernate (
-    _In_ PKPROCESSOR_STATE State
-    );
-
-#if (NTDDI_VERSION < NTDDI_WINTHRESHOLD)
-BOOLEAN
-FORCEINLINE
-HviIsAnyHypervisorPresent (
-    VOID
-    )
-{
-    INT cpuInfo[4];
-
-    __cpuid(cpuInfo, 1);
-
-    if (cpuInfo[2] & 0x80000000)
-    {
-        return TRUE;
-    }
-    else
-    {
-        return FALSE;
-    }
-}
-#else
-NTKERNELAPI
-BOOLEAN
-HviIsAnyHypervisorPresent (
-    VOID
-    );
-#endif

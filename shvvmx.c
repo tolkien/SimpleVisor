@@ -58,7 +58,7 @@ ShvVmxEnterRootModeOnVp (
     _In_ PSHV_VP_DATA VpData
     )
 {
-    PKSPECIAL_REGISTERS Registers = &VpData->HostState.SpecialRegisters;
+    PSHV_SPECIAL_REGISTERS Registers = &VpData->SpecialRegisters;
 
     //
     // Ensure the the VMCS can fit into a single page
@@ -161,7 +161,8 @@ ShvVmxSetupVmcsForVp (
     _In_ PSHV_VP_DATA VpData
     )
 {
-    PKPROCESSOR_STATE state = &VpData->HostState;
+    PSHV_SPECIAL_REGISTERS state = &VpData->SpecialRegisters;
+    PCONTEXT context = &VpData->ContextFrame;
     VMX_GDTENTRY64 vmxGdtEntry;
     VMX_EPTP vmxEptp;
 
@@ -247,80 +248,80 @@ ShvVmxSetupVmcsForVp (
     //
     // Load the CS Segment (Ring 0 Code)
     //
-    ShvUtilConvertGdtEntry(state->SpecialRegisters.Gdtr.Base, state->ContextFrame.SegCs, &vmxGdtEntry);
+    ShvUtilConvertGdtEntry(state->Gdtr.Base, context->SegCs, &vmxGdtEntry);
     __vmx_vmwrite(GUEST_CS_SELECTOR, vmxGdtEntry.Selector);
     __vmx_vmwrite(GUEST_CS_LIMIT, vmxGdtEntry.Limit);
     __vmx_vmwrite(GUEST_CS_AR_BYTES, vmxGdtEntry.AccessRights);
     __vmx_vmwrite(GUEST_CS_BASE, vmxGdtEntry.Base);
-    __vmx_vmwrite(HOST_CS_SELECTOR, state->ContextFrame.SegCs & ~RPL_MASK);
+    __vmx_vmwrite(HOST_CS_SELECTOR, context->SegCs & ~RPL_MASK);
  
     //
     // Load the SS Segment (Ring 0 Data)
     //
-    ShvUtilConvertGdtEntry(state->SpecialRegisters.Gdtr.Base, state->ContextFrame.SegSs, &vmxGdtEntry);
+    ShvUtilConvertGdtEntry(state->Gdtr.Base, context->SegSs, &vmxGdtEntry);
     __vmx_vmwrite(GUEST_SS_SELECTOR, vmxGdtEntry.Selector);
     __vmx_vmwrite(GUEST_SS_LIMIT, vmxGdtEntry.Limit);
     __vmx_vmwrite(GUEST_SS_AR_BYTES, vmxGdtEntry.AccessRights);
     __vmx_vmwrite(GUEST_SS_BASE, vmxGdtEntry.Base);
-    __vmx_vmwrite(HOST_SS_SELECTOR, state->ContextFrame.SegSs & ~RPL_MASK);
+    __vmx_vmwrite(HOST_SS_SELECTOR, context->SegSs & ~RPL_MASK);
  
     //
     // Load the DS Segment (Ring 3 Data)
     //
-    ShvUtilConvertGdtEntry(state->SpecialRegisters.Gdtr.Base, state->ContextFrame.SegDs, &vmxGdtEntry);
+    ShvUtilConvertGdtEntry(state->Gdtr.Base, context->SegDs, &vmxGdtEntry);
     __vmx_vmwrite(GUEST_DS_SELECTOR, vmxGdtEntry.Selector);
     __vmx_vmwrite(GUEST_DS_LIMIT, vmxGdtEntry.Limit);
     __vmx_vmwrite(GUEST_DS_AR_BYTES, vmxGdtEntry.AccessRights);
     __vmx_vmwrite(GUEST_DS_BASE, vmxGdtEntry.Base);
-    __vmx_vmwrite(HOST_DS_SELECTOR, state->ContextFrame.SegDs & ~RPL_MASK);
+    __vmx_vmwrite(HOST_DS_SELECTOR, context->SegDs & ~RPL_MASK);
 
     //
     // Load the ES Segment (Ring 3 Data)
     //
-    ShvUtilConvertGdtEntry(state->SpecialRegisters.Gdtr.Base, state->ContextFrame.SegEs, &vmxGdtEntry);
+    ShvUtilConvertGdtEntry(state->Gdtr.Base, context->SegEs, &vmxGdtEntry);
     __vmx_vmwrite(GUEST_ES_SELECTOR, vmxGdtEntry.Selector);
     __vmx_vmwrite(GUEST_ES_LIMIT, vmxGdtEntry.Limit);
     __vmx_vmwrite(GUEST_ES_AR_BYTES, vmxGdtEntry.AccessRights);
     __vmx_vmwrite(GUEST_ES_BASE, vmxGdtEntry.Base);
-    __vmx_vmwrite(HOST_ES_SELECTOR, state->ContextFrame.SegEs & ~RPL_MASK);
+    __vmx_vmwrite(HOST_ES_SELECTOR, context->SegEs & ~RPL_MASK);
  
     //
     // Load the FS Segment (Ring 3 Compatibility-Mode TEB)
     //
-    ShvUtilConvertGdtEntry(state->SpecialRegisters.Gdtr.Base, state->ContextFrame.SegFs, &vmxGdtEntry);
+    ShvUtilConvertGdtEntry(state->Gdtr.Base, context->SegFs, &vmxGdtEntry);
     __vmx_vmwrite(GUEST_FS_SELECTOR, vmxGdtEntry.Selector);
     __vmx_vmwrite(GUEST_FS_LIMIT, vmxGdtEntry.Limit);
     __vmx_vmwrite(GUEST_FS_AR_BYTES, vmxGdtEntry.AccessRights);
     __vmx_vmwrite(GUEST_FS_BASE, vmxGdtEntry.Base);
     __vmx_vmwrite(HOST_FS_BASE, vmxGdtEntry.Base);
-    __vmx_vmwrite(HOST_FS_SELECTOR, state->ContextFrame.SegFs & ~RPL_MASK);
+    __vmx_vmwrite(HOST_FS_SELECTOR, context->SegFs & ~RPL_MASK);
  
     //
     // Load the GS Segment (Ring 3 Data if in Compatibility-Mode, MSR-based in Long Mode)
     //
-    ShvUtilConvertGdtEntry(state->SpecialRegisters.Gdtr.Base, state->ContextFrame.SegGs, &vmxGdtEntry);
+    ShvUtilConvertGdtEntry(state->Gdtr.Base, context->SegGs, &vmxGdtEntry);
     __vmx_vmwrite(GUEST_GS_SELECTOR, vmxGdtEntry.Selector);
     __vmx_vmwrite(GUEST_GS_LIMIT, vmxGdtEntry.Limit);
     __vmx_vmwrite(GUEST_GS_AR_BYTES, vmxGdtEntry.AccessRights);
-    __vmx_vmwrite(GUEST_GS_BASE, state->SpecialRegisters.MsrGsBase);
-    __vmx_vmwrite(HOST_GS_BASE, state->SpecialRegisters.MsrGsBase);
-    __vmx_vmwrite(HOST_GS_SELECTOR, state->ContextFrame.SegGs & ~RPL_MASK);
+    __vmx_vmwrite(GUEST_GS_BASE, state->MsrGsBase);
+    __vmx_vmwrite(HOST_GS_BASE, state->MsrGsBase);
+    __vmx_vmwrite(HOST_GS_SELECTOR, context->SegGs & ~RPL_MASK);
  
     //
     // Load the Task Register (Ring 0 TSS)
     //
-    ShvUtilConvertGdtEntry(state->SpecialRegisters.Gdtr.Base, state->SpecialRegisters.Tr, &vmxGdtEntry);
+    ShvUtilConvertGdtEntry(state->Gdtr.Base, state->Tr, &vmxGdtEntry);
     __vmx_vmwrite(GUEST_TR_SELECTOR, vmxGdtEntry.Selector);
     __vmx_vmwrite(GUEST_TR_LIMIT, vmxGdtEntry.Limit);
     __vmx_vmwrite(GUEST_TR_AR_BYTES, vmxGdtEntry.AccessRights);
     __vmx_vmwrite(GUEST_TR_BASE, vmxGdtEntry.Base);
     __vmx_vmwrite(HOST_TR_BASE, vmxGdtEntry.Base);
-    __vmx_vmwrite(HOST_TR_SELECTOR, state->SpecialRegisters.Tr & ~RPL_MASK);
+    __vmx_vmwrite(HOST_TR_SELECTOR, state->Tr & ~RPL_MASK);
  
     //
     // Load the Local Descriptor Table (Ring 0 LDT on Redstone)
     //
-    ShvUtilConvertGdtEntry(state->SpecialRegisters.Gdtr.Base, state->SpecialRegisters.Ldtr, &vmxGdtEntry);
+    ShvUtilConvertGdtEntry(state->Gdtr.Base, state->Ldtr, &vmxGdtEntry);
     __vmx_vmwrite(GUEST_LDTR_SELECTOR, vmxGdtEntry.Selector);
     __vmx_vmwrite(GUEST_LDTR_LIMIT, vmxGdtEntry.Limit);
     __vmx_vmwrite(GUEST_LDTR_AR_BYTES, vmxGdtEntry.AccessRights);
@@ -329,23 +330,23 @@ ShvVmxSetupVmcsForVp (
     //
     // Now load the GDT itself
     //
-    __vmx_vmwrite(GUEST_GDTR_BASE, (ULONG_PTR)state->SpecialRegisters.Gdtr.Base);
-    __vmx_vmwrite(GUEST_GDTR_LIMIT, state->SpecialRegisters.Gdtr.Limit);
-    __vmx_vmwrite(HOST_GDTR_BASE, (ULONG_PTR)state->SpecialRegisters.Gdtr.Base);
+    __vmx_vmwrite(GUEST_GDTR_BASE, (ULONG_PTR)state->Gdtr.Base);
+    __vmx_vmwrite(GUEST_GDTR_LIMIT, state->Gdtr.Limit);
+    __vmx_vmwrite(HOST_GDTR_BASE, (ULONG_PTR)state->Gdtr.Base);
 
     //
     // And then the IDT
     //
-    __vmx_vmwrite(GUEST_IDTR_BASE, (ULONG_PTR)state->SpecialRegisters.Idtr.Base);
-    __vmx_vmwrite(GUEST_IDTR_LIMIT, state->SpecialRegisters.Idtr.Limit);
-    __vmx_vmwrite(HOST_IDTR_BASE, (ULONG_PTR)state->SpecialRegisters.Idtr.Base);
+    __vmx_vmwrite(GUEST_IDTR_BASE, (ULONG_PTR)state->Idtr.Base);
+    __vmx_vmwrite(GUEST_IDTR_LIMIT, state->Idtr.Limit);
+    __vmx_vmwrite(HOST_IDTR_BASE, (ULONG_PTR)state->Idtr.Base);
 
     //
     // Load CR0
     //
-    __vmx_vmwrite(CR0_READ_SHADOW, state->SpecialRegisters.Cr0);
-    __vmx_vmwrite(HOST_CR0, state->SpecialRegisters.Cr0);
-    __vmx_vmwrite(GUEST_CR0, state->SpecialRegisters.Cr0);
+    __vmx_vmwrite(CR0_READ_SHADOW, state->Cr0);
+    __vmx_vmwrite(HOST_CR0, state->Cr0);
+    __vmx_vmwrite(GUEST_CR0, state->Cr0);
 
     //
     // Load CR3 -- do not use the current process' address space for the host,
@@ -353,29 +354,29 @@ ShvVmxSetupVmcsForVp (
     // as part of the DPC interrupt we execute in.
     //
     __vmx_vmwrite(HOST_CR3, VpData->SystemDirectoryTableBase);
-    __vmx_vmwrite(GUEST_CR3, state->SpecialRegisters.Cr3);
+    __vmx_vmwrite(GUEST_CR3, state->Cr3);
 
     //
     // Load CR4
     //
-    __vmx_vmwrite(HOST_CR4, state->SpecialRegisters.Cr4);
-    __vmx_vmwrite(GUEST_CR4, state->SpecialRegisters.Cr4);
-    __vmx_vmwrite(CR4_READ_SHADOW, state->SpecialRegisters.Cr4);
+    __vmx_vmwrite(HOST_CR4, state->Cr4);
+    __vmx_vmwrite(GUEST_CR4, state->Cr4);
+    __vmx_vmwrite(CR4_READ_SHADOW, state->Cr4);
 
     //
     // Load debug MSR and register (DR7)
     //
-    __vmx_vmwrite(GUEST_IA32_DEBUGCTL, state->SpecialRegisters.DebugControl);
-    __vmx_vmwrite(GUEST_DR7, state->SpecialRegisters.KernelDr7);
+    __vmx_vmwrite(GUEST_IA32_DEBUGCTL, state->DebugControl);
+    __vmx_vmwrite(GUEST_DR7, state->KernelDr7);
 
     //
     // Finally, load the guest stack, instruction pointer, and rflags, which
     // corresponds exactly to the location where RtlCaptureContext will return
     // to inside of ShvVpInitialize.
     //
-    __vmx_vmwrite(GUEST_RSP, state->ContextFrame.Rsp);
-    __vmx_vmwrite(GUEST_RIP, state->ContextFrame.Rip);
-    __vmx_vmwrite(GUEST_RFLAGS, state->ContextFrame.EFlags);
+    __vmx_vmwrite(GUEST_RSP, context->Rsp);
+    __vmx_vmwrite(GUEST_RIP, context->Rip);
+    __vmx_vmwrite(GUEST_RFLAGS, context->EFlags);
 
     //
     // Load the hypervisor entrypoint and stack. We give ourselves a standard

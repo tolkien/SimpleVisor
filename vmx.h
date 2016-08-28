@@ -133,6 +133,17 @@ Environment:
 #define IA32_FEATURE_CONTROL_MSR_SENTER_PARAM_CTL         0x7f00
 #define IA32_FEATURE_CONTROL_MSR_ENABLE_SENTER            0x8000
 
+#define HYPERV_CPUID_VENDOR_AND_MAX_FUNCTIONS   0x40000000
+#define HYPERV_CPUID_INTERFACE                  0x40000001
+#define HYPERV_CPUID_VERSION                    0x40000002
+#define HYPERV_CPUID_FEATURES                   0x40000003
+#define HYPERV_CPUID_ENLIGHTMENT_INFO           0x40000004
+#define HYPERV_CPUID_IMPLEMENT_LIMITS           0x40000005
+
+#define HYPERV_HYPERVISOR_PRESENT_BIT           0x80000000
+#define HYPERV_CPUID_MIN                        0x40000005
+#define HYPERV_CPUID_MAX                        0x4000ffff
+
 enum vmcs_field {
     VIRTUAL_PROCESSOR_ID            = 0x00000000,
     POSTED_INTR_NOTIFICATION_VECTOR = 0x00000002,
@@ -340,3 +351,105 @@ enum vmcs_field {
 #define GUEST_ACTIVITY_ACTIVE           0
 #define GUEST_ACTIVITY_HLT              1
 
+typedef struct _VMX_GDTENTRY64
+{
+    ULONG_PTR Base;
+    ULONG Limit;
+    union
+    {
+        struct
+        {
+            UCHAR Flags1;
+            UCHAR Flags2;
+            UCHAR Flags3;
+            UCHAR Flags4;
+        } Bytes;
+        struct
+        {
+            USHORT SegmentType : 4;
+            USHORT DescriptorType : 1;
+            USHORT Dpl : 2;
+            USHORT Present : 1;
+
+            USHORT Reserved : 4;
+            USHORT System : 1;
+            USHORT LongMode : 1;
+            USHORT DefaultBig : 1;
+            USHORT Granularity : 1;
+
+            USHORT Unusable : 1;
+            USHORT Reserved2 : 15;
+        } Bits;
+        ULONG AccessRights;
+    };
+    USHORT Selector;
+} VMX_GDTENTRY64, *PVMX_GDTENTRY64;
+
+typedef struct DECLSPEC_ALIGN(PAGE_SIZE) _VMX_VMCS
+{
+    ULONG RevisionId;
+    ULONG AbortIndicator;
+    UCHAR Data[PAGE_SIZE - 8];
+} VMX_VMCS, *PVMX_VMCS;
+
+typedef struct _VMX_EPTP
+{
+    union
+    {
+        struct
+        {
+            ULONGLONG Type : 3;
+            ULONGLONG PageWalkLength : 3;
+            ULONGLONG EnableAccessAndDirtyFlags : 1;
+            ULONGLONG Reserved : 5;
+            ULONGLONG PageFrameNumber : 36;
+            ULONGLONG ReservedHigh : 16;
+        };
+        ULONGLONG AsUlonglong;
+    };
+} VMX_EPTP, *PVMX_EPTP;
+
+typedef struct _VMX_EPML4E
+{
+    union
+    {
+        struct
+        {
+            ULONGLONG Read : 1;
+            ULONGLONG Write : 1;
+            ULONGLONG Execute : 1;
+            ULONGLONG Reserved : 5;
+            ULONGLONG Accessed : 1;
+            ULONGLONG SoftwareUse : 3;
+            ULONGLONG PageFrameNumber : 36;
+            ULONGLONG ReservedHigh : 4;
+            ULONGLONG SoftwareUseHigh : 12;
+        };
+        ULONGLONG AsUlonglong;
+    };
+} VMX_EPML4E, *PVMX_EPML4E;
+
+typedef struct _VMX_HUGE_PDPTE
+{
+    union
+    {
+        struct
+        {
+            ULONGLONG Read : 1;
+            ULONGLONG Write : 1;
+            ULONGLONG Execute : 1;
+            ULONGLONG Type : 3;
+            ULONGLONG IgnorePat : 1;
+            ULONGLONG Large : 1;
+            ULONGLONG Accessed : 1;
+            ULONGLONG Dirty : 1;
+            ULONGLONG SoftwareUse : 2;
+            ULONGLONG Reserved : 18;
+            ULONGLONG PageFrameNumber : 18;
+            ULONGLONG ReservedHigh : 4;
+            ULONGLONG SoftwareUseHigh : 11;
+            ULONGLONG SupressVme : 1;
+        };
+        ULONGLONG AsUlonglong;
+    };
+} VMX_HUGE_PDPTE, *PVMX_HUGE_PDPTE;

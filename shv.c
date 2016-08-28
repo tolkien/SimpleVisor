@@ -24,6 +24,39 @@ Environment:
 
 PSHV_GLOBAL_DATA ShvGlobalData;
 
+BOOLEAN
+ShvIsOurHypervisorPresent (
+    VOID
+    )
+{
+    INT cpuInfo[4];
+
+    //
+    // Check if ECX[31h] ("Hypervisor Present Bit") is set in CPUID 1h
+    //
+    __cpuid(cpuInfo, 1);
+    if (cpuInfo[2] & HYPERV_HYPERVISOR_PRESENT_BIT)
+    {
+        //
+        // Next, check if this is a compatible Hypervisor, and if it has the
+        // SimpleVisor signature
+        //
+        __cpuid(cpuInfo, HYPERV_CPUID_INTERFACE);
+        if (cpuInfo[0] == ' vhS')
+        {
+            //
+            // It's us!
+            //
+            return TRUE;
+        }
+    }
+
+    //
+    // No Hypervisor, or someone else's
+    //
+    return FALSE;
+}
+
 VOID
 ShvUnload (
     _In_ PDRIVER_OBJECT DriverObject
@@ -71,17 +104,6 @@ ShvInitialize (
     UNREFERENCED_PARAMETER(RegistryPath);
 
     //
-    // Detect if a hypervisor is already loaded, using the standard high bit in
-    // the ECX features register. Hypervisors may choose to hide from this, at
-    // which point entering VMX root mode will fail (unless a shadows VMCS is
-    // used).
-    //
-    if (HviIsAnyHypervisorPresent())
-    {
-        return STATUS_HV_OBJECT_IN_USE;
-    }
-
-    //
     // Next, detect if the hardware appears to support VMX root mode to start.
     // No attempts are made to enable this if it is lacking or disabled.
     //
@@ -115,10 +137,10 @@ ShvInitialize (
     KeGenericCallDpc(ShvVpCallbackDpc, (PVOID)__readcr3());
 
     //
-    // A hypervisor should now be seen as present on this (and all other) LP,
+    // Our hypervisor should now be seen as present on this (and all other) LP,
     // as the SHV correctly handles CPUID ECX features register.
     //
-    if (HviIsAnyHypervisorPresent() == FALSE)
+    if (ShvIsOurHypervisorPresent() == FALSE)
     {
         MmFreeContiguousMemory(ShvGlobalData);
         return STATUS_HV_NOT_PRESENT;

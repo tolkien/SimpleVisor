@@ -28,112 +28,24 @@ Environment:
 #include "ntint.h"
 #include "vmx.h"
 
-typedef struct _VMX_GDTENTRY64
+typedef struct _SHV_SPECIAL_REGISTERS
 {
-    ULONG_PTR Base;
-    ULONG Limit;
-    union
-    {
-        struct
-        {
-            UCHAR Flags1;
-            UCHAR Flags2;
-            UCHAR Flags3;
-            UCHAR Flags4;
-        } Bytes;
-        struct
-        {
-            USHORT SegmentType : 4;
-            USHORT DescriptorType : 1;
-            USHORT Dpl : 2;
-            USHORT Present : 1;
-
-            USHORT Reserved : 4;
-            USHORT System : 1;
-            USHORT LongMode : 1;
-            USHORT DefaultBig : 1;
-            USHORT Granularity : 1;
-
-            USHORT Unusable : 1;
-            USHORT Reserved2 : 15;
-        } Bits;
-        ULONG AccessRights;
-    };
-    USHORT Selector;
-} VMX_GDTENTRY64, *PVMX_GDTENTRY64;
-
-typedef struct DECLSPEC_ALIGN(PAGE_SIZE) _VMX_VMCS
-{
-    ULONG RevisionId;
-    ULONG AbortIndicator;
-    UCHAR Data[PAGE_SIZE - 8];
-} VMX_VMCS, *PVMX_VMCS;
-
-typedef struct _VMX_EPTP
-{
-    union
-    {
-        struct
-        {
-            ULONGLONG Type : 3;
-            ULONGLONG PageWalkLength : 3;
-            ULONGLONG EnableAccessAndDirtyFlags : 1;
-            ULONGLONG Reserved : 5;
-            ULONGLONG PageFrameNumber : 36;
-            ULONGLONG ReservedHigh : 16;
-        };
-        ULONGLONG AsUlonglong;
-    };
-} VMX_EPTP, *PVMX_EPTP;
-
-typedef struct _VMX_EPML4E
-{
-    union
-    {
-        struct
-        {
-            ULONGLONG Read : 1;
-            ULONGLONG Write : 1;
-            ULONGLONG Execute : 1;
-            ULONGLONG Reserved : 5;
-            ULONGLONG Accessed : 1;
-            ULONGLONG SoftwareUse : 3;
-            ULONGLONG PageFrameNumber : 36;
-            ULONGLONG ReservedHigh : 4;
-            ULONGLONG SoftwareUseHigh : 12;
-        };
-        ULONGLONG AsUlonglong;
-    };
-} VMX_EPML4E, *PVMX_EPML4E;
-
-typedef struct _VMX_HUGE_PDPTE
-{
-    union
-    {
-        struct
-        {
-            ULONGLONG Read : 1;
-            ULONGLONG Write : 1;
-            ULONGLONG Execute : 1;
-            ULONGLONG Type : 3;
-            ULONGLONG IgnorePat : 1;
-            ULONGLONG Large : 1;
-            ULONGLONG Accessed : 1;
-            ULONGLONG Dirty : 1;
-            ULONGLONG SoftwareUse : 2;
-            ULONGLONG Reserved : 18;
-            ULONGLONG PageFrameNumber : 18;
-            ULONGLONG ReservedHigh : 4;
-            ULONGLONG SoftwareUseHigh : 11;
-            ULONGLONG SupressVme : 1;
-        };
-        ULONGLONG AsUlonglong;
-    };
-} VMX_HUGE_PDPTE, *PVMX_HUGE_PDPTE;
+    ULONG64 Cr0;
+    ULONG64 Cr3;
+    ULONG64 Cr4;
+    ULONG64 MsrGsBase;
+    USHORT Tr;
+    USHORT Ldtr;
+    ULONG64 DebugControl;
+    ULONG64 KernelDr7;
+    KDESCRIPTOR Idtr;
+    KDESCRIPTOR Gdtr;
+} SHV_SPECIAL_REGISTERS, *PSHV_SPECIAL_REGISTERS;
 
 typedef struct _SHV_VP_DATA
 {
-    KPROCESSOR_STATE HostState;
+    SHV_SPECIAL_REGISTERS SpecialRegisters;
+    CONTEXT ContextFrame;
     ULONG VpIndex;
     volatile ULONG VmxEnabled;
     ULONG64 SystemDirectoryTableBase;
@@ -186,6 +98,16 @@ VOID
 ShvVmxCleanup (
     _In_ USHORT Data,
     _In_ USHORT Teb
+    );
+
+VOID
+_sldt (
+    _In_ PUSHORT Ldtr
+    );
+
+VOID
+_str (
+    _In_ PUSHORT Tr
     );
 
 VOID
