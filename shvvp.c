@@ -81,7 +81,7 @@ ShvVpInitialize (
     // variable combined with an API call, we also make sure that the compiler
     // will not optimize this access in any way, even on LTGC/Ox builds.
     //
-    if (ShvGlobalData->VpData[KeGetCurrentProcessorNumberEx(NULL)].VmxEnabled == 1)
+    if (ShvGlobalData[KeGetCurrentProcessorNumberEx(NULL)].VmxEnabled == 1)
     {
         //
         // We now indicate that the VM has launched, and that we are about to
@@ -90,7 +90,7 @@ ShvVpInitialize (
         // this time the value of VmxEnabled will be two, bypassing the if and
         // else if checks.
         //
-        ShvGlobalData->VpData[KeGetCurrentProcessorNumberEx(NULL)].VmxEnabled = 2;
+        ShvGlobalData[KeGetCurrentProcessorNumberEx(NULL)].VmxEnabled = 2;
 
         //
         // And finally, restore the context, so that all register and stack
@@ -99,7 +99,7 @@ ShvVpInitialize (
         // optimized accesses, guaranteeing that no previous register state
         // will be used.
         //
-        RtlRestoreContext(&ShvGlobalData->VpData[KeGetCurrentProcessorNumberEx(NULL)].ContextFrame, NULL);
+        RtlRestoreContext(&ShvGlobalData[KeGetCurrentProcessorNumberEx(NULL)].ContextFrame, NULL);
     }
     //
     // If we are in this branch comparison, it means that we have not yet
@@ -170,7 +170,7 @@ ShvVpCallbackDpc (
     //
     // Get the per-VP data for this logical processor
     //
-    vpData = &ShvGlobalData->VpData[KeGetCurrentProcessorNumberEx(NULL)];
+    vpData = &ShvGlobalData[KeGetCurrentProcessorNumberEx(NULL)];
 
     //
     // Check if we are loading, or unloading
@@ -201,13 +201,13 @@ ShvVpCallbackDpc (
     KeSignalCallDpcDone(SystemArgument1);
 }
 
-PSHV_GLOBAL_DATA
+PSHV_VP_DATA
 ShvVpAllocateGlobalData (
     VOID
     )
 {
     PHYSICAL_ADDRESS lowest, highest;
-    PSHV_GLOBAL_DATA data;
+    PSHV_VP_DATA data;
     ULONG cpuCount, size;
 
     //
@@ -225,18 +225,18 @@ ShvVpAllocateGlobalData (
     //
     // Each processor will receive its own slice of per-virtual processor data.
     //
-    size = FIELD_OFFSET(SHV_GLOBAL_DATA, VpData) + cpuCount * sizeof(SHV_VP_DATA);
+    size = cpuCount * sizeof(SHV_VP_DATA);
 
     //
     // Allocate a contiguous chunk of RAM to back this allocation and make sure
     // that it is RW only, instead of RWX, by using the new Windows 8 API.
     //
-    data = (PSHV_GLOBAL_DATA)MmAllocateContiguousNodeMemory(size,
-                                                            lowest,
-                                                            highest,
-                                                            lowest,
-                                                            PAGE_READWRITE,
-                                                            MM_ANY_NODE_OK);
+    data = MmAllocateContiguousNodeMemory(size,
+                                          lowest,
+                                          highest,
+                                          lowest,
+                                          PAGE_READWRITE,
+                                          MM_ANY_NODE_OK);
     if (data != NULL)
     {
         //

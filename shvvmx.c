@@ -24,7 +24,7 @@ Environment:
 
 VOID
 ShvVmxEptInitialize (
-    VOID
+    _In_ PSHV_VP_DATA VpData
     )
 {
     ULONGLONG i;
@@ -33,10 +33,10 @@ ShvVmxEptInitialize (
     //
     // Fill out the EPML4E which covers the first 512GB of RAM
     //
-    ShvGlobalData->Epml4[0].Read = 1;
-    ShvGlobalData->Epml4[0].Write = 1;
-    ShvGlobalData->Epml4[0].Execute = 1;
-    ShvGlobalData->Epml4[0].PageFrameNumber = MmGetPhysicalAddress(&ShvGlobalData->Epdpt).QuadPart / PAGE_SIZE;
+    VpData->Epml4[0].Read = 1;
+    VpData->Epml4[0].Write = 1;
+    VpData->Epml4[0].Execute = 1;
+    VpData->Epml4[0].PageFrameNumber = MmGetPhysicalAddress(&VpData->Epdpt).QuadPart / PAGE_SIZE;
 
     //
     // Fill out a RWX Write-back 1GB EPDPTE
@@ -49,8 +49,8 @@ ShvVmxEptInitialize (
     //
     // Construct EPT identity map for every 1GB of RAM
     //
-    __stosq((PULONG64)ShvGlobalData->Epdpt, tempEpdpte.AsUlonglong, PDPTE_ENTRY_COUNT);
-    for (i = 0; i < PDPTE_ENTRY_COUNT; i++) ShvGlobalData->Epdpt[i].PageFrameNumber = i;
+    __stosq((PULONG64)VpData->Epdpt, tempEpdpte.AsUlonglong, PDPTE_ENTRY_COUNT);
+    for (i = 0; i < PDPTE_ENTRY_COUNT; i++) VpData->Epdpt[i].PageFrameNumber = i;
 }
 
 BOOLEAN
@@ -105,8 +105,8 @@ ShvVmxEnterRootModeOnVp (
     //
     VpData->VmxOnPhysicalAddress = MmGetPhysicalAddress(&VpData->VmxOn).QuadPart;
     VpData->VmcsPhysicalAddress = MmGetPhysicalAddress(&VpData->Vmcs).QuadPart;
-    VpData->MsrBitmapPhysicalAddress = MmGetPhysicalAddress(ShvGlobalData->MsrBitmap).QuadPart;
-    VpData->EptPml4PhysicalAddress = MmGetPhysicalAddress(&ShvGlobalData->Epml4).QuadPart;
+    VpData->MsrBitmapPhysicalAddress = MmGetPhysicalAddress(VpData->MsrBitmap).QuadPart;
+    VpData->EptPml4PhysicalAddress = MmGetPhysicalAddress(&VpData->Epml4).QuadPart;
 
     //
     // Update CR0 with the must-be-zero and must-be-one requirements
@@ -191,7 +191,7 @@ ShvVmxSetupVmcsForVp (
 
     //
     // Load the MSR bitmap. Unlike other bitmaps, not having an MSR bitmap will
-    // trap all MSRs, so have to allocate an empty one.
+    // trap all MSRs, so we allocated an empty one.
     //
     __vmx_vmwrite(MSR_BITMAP, VpData->MsrBitmapPhysicalAddress);
 
@@ -449,6 +449,11 @@ ShvVmxLaunchOnVp (
     {
         VpData->MsrData[i].QuadPart = __readmsr(MSR_IA32_VMX_BASIC + i);
     }
+
+    //
+    // Initialize the EPT structures
+    //
+    ShvVmxEptInitialize(VpData);
 
     //
     // Attempt to enter VMX root mode on this processor.

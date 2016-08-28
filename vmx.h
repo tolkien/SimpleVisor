@@ -453,3 +453,9 @@ typedef struct _VMX_HUGE_PDPTE
         ULONGLONG AsUlonglong;
     };
 } VMX_HUGE_PDPTE, *PVMX_HUGE_PDPTE;
+
+C_ASSERT(sizeof(VMX_EPTP) == sizeof(ULONGLONG));
+C_ASSERT(sizeof(VMX_EPML4E) == sizeof(ULONGLONG));
+
+#define PML4E_ENTRY_COUNT 512
+#define PDPTE_ENTRY_COUNT 512

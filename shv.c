@@ -22,7 +22,7 @@ Environment:
 
 #include "shv.h"
 
-PSHV_GLOBAL_DATA ShvGlobalData;
+PSHV_VP_DATA ShvGlobalData;
 
 BOOLEAN
 ShvIsOurHypervisorPresent (
@@ -120,11 +120,6 @@ ShvInitialize (
     {
         return STATUS_HV_INSUFFICIENT_BUFFER;
     }
-
-    //
-    // Initialize the EPT structures
-    //
-    ShvVmxEptInitialize();
 
     //
     // Attempt to enter VMX root mode on all logical processors. This will

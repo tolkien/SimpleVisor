@@ -46,8 +46,10 @@ typedef struct _SHV_VP_DATA
 {
     SHV_SPECIAL_REGISTERS SpecialRegisters;
     CONTEXT ContextFrame;
+
     ULONG VpIndex;
     volatile ULONG VmxEnabled;
+
     ULONG64 SystemDirectoryTableBase;
     LARGE_INTEGER MsrData[17];
     ULONGLONG VmxOnPhysicalAddress;
@@ -55,28 +57,18 @@ typedef struct _SHV_VP_DATA
     ULONGLONG MsrBitmapPhysicalAddress;
     ULONGLONG EptPml4PhysicalAddress;
 
+    DECLSPEC_ALIGN(PAGE_SIZE) UCHAR MsrBitmap[PAGE_SIZE];
+    DECLSPEC_ALIGN(PAGE_SIZE) VMX_EPML4E Epml4[PML4E_ENTRY_COUNT];
+    DECLSPEC_ALIGN(PAGE_SIZE) VMX_HUGE_PDPTE Epdpt[PDPTE_ENTRY_COUNT];
+
     DECLSPEC_ALIGN(PAGE_SIZE) UCHAR ShvStackLimit[KERNEL_STACK_SIZE];
-    VMX_VMCS VmxOn;
-    VMX_VMCS Vmcs;
+    DECLSPEC_ALIGN(PAGE_SIZE) VMX_VMCS VmxOn;
+    DECLSPEC_ALIGN(PAGE_SIZE) VMX_VMCS Vmcs;
 } SHV_VP_DATA, *PSHV_VP_DATA;
 
-C_ASSERT(sizeof(SHV_VP_DATA) == (KERNEL_STACK_SIZE + 3 * PAGE_SIZE));
-
-C_ASSERT(sizeof(VMX_EPTP) == sizeof(ULONGLONG));
-C_ASSERT(sizeof(VMX_EPML4E) == sizeof(ULONGLONG));
-
-#define PML4E_ENTRY_COUNT 512
-#define PDPTE_ENTRY_COUNT 512
-typedef struct _SHV_GLOBAL_DATA
-{
-    UCHAR MsrBitmap[PAGE_SIZE];
-    VMX_EPML4E Epml4[PML4E_ENTRY_COUNT];
-    VMX_HUGE_PDPTE Epdpt[PDPTE_ENTRY_COUNT];
-    SHV_VP_DATA VpData[ANYSIZE_ARRAY];
-} SHV_GLOBAL_DATA, *PSHV_GLOBAL_DATA;
-
-C_ASSERT((FIELD_OFFSET(SHV_GLOBAL_DATA, Epml4) % PAGE_SIZE) == 0);
-C_ASSERT((FIELD_OFFSET(SHV_GLOBAL_DATA, Epdpt) % PAGE_SIZE) == 0);
+C_ASSERT(sizeof(SHV_VP_DATA) == (KERNEL_STACK_SIZE + 6 * PAGE_SIZE));
+C_ASSERT((FIELD_OFFSET(SHV_VP_DATA, Epml4) % PAGE_SIZE) == 0);
+C_ASSERT((FIELD_OFFSET(SHV_VP_DATA, Epdpt) % PAGE_SIZE) == 0);
 
 typedef struct _SHV_VP_STATE
 {
@@ -133,7 +125,7 @@ ShvUtilAdjustMsr (
     _In_ ULONG DesiredValue
     );
 
-PSHV_GLOBAL_DATA
+PSHV_VP_DATA
 ShvVpAllocateGlobalData (
     VOID
     );
@@ -145,9 +137,10 @@ ShvVmxProbe (
 
 VOID
 ShvVmxEptInitialize (
-    VOID
+    _In_ PSHV_VP_DATA VpData
     );
 
 KDEFERRED_ROUTINE ShvVpCallbackDpc;
 
-extern PSHV_GLOBAL_DATA ShvGlobalData;
+extern PSHV_VP_DATA ShvGlobalData;
+
