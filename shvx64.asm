@@ -41,8 +41,8 @@ include ksamd64.inc
 
     NESTED_ENTRY ShvVmxEntry, _TEXT$00
 
-    push_reg rcx                ; save RCX, as we will need to orverride it
-    END_PROLOGUE                ; done messing with the stack
+    push_reg rcx                ; save RCX, as we will need to override it once
+    END_PROLOGUE                ; we are done messing with the stack
 
     lea     rcx, [rsp+8h]       ; store the context in the stack, bias for
                                 ; the return address and the push we just did.

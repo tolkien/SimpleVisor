@@ -158,11 +158,10 @@ ShvVpInitialize (
 
 VOID
 ShvVpUninitialize (
-    _In_ PSHV_VP_DATA VpData
+    VOID
     )
 {
     INT dummy[4];
-    UNREFERENCED_PARAMETER(VpData);
 
     //
     // Send the magic shutdown instruction sequence
