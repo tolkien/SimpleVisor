@@ -284,12 +284,14 @@ ShvVmxEntryHandler (
         __writecr3(ShvVmxRead(GUEST_CR3));
 
         //
-        // Finally, set the stack and instruction pointer to whatever location
-        // had the instruction causing our VM-Exit, such as ShvVpUninitialize.
-        // This will effectively act as a longjmp back to that location.
+        // Finally, restore the stack, instruction pointer and EFLAGS to the
+        // original values present when the instruction causing our VM-Exit
+        // execute (such as ShvVpUninitialize). This will effectively act as
+        // a longjmp back to that location.
         //
         Context->Rsp = guestContext.GuestRsp;
         Context->Rip = (ULONG64)guestContext.GuestRip;
+        Context->EFlags = (ULONG)guestContext.GuestEFlags;
 
         //
         // Turn off VMX root mode on this logical processor. We're done here.
