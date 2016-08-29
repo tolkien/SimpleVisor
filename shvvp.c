@@ -90,7 +90,7 @@ ShvVpRestoreAfterLaunch (
     //
     // Record that VMX is now enabled
     //
-    vpData->VmxEnabled = 1;
+    vpData->ContextFrame.EFlags |= (1 << 18);
 
     //
     // And finally, restore the context, so that all register and stack
@@ -104,8 +104,7 @@ ShvVpRestoreAfterLaunch (
 
 VOID
 ShvVpInitialize (
-    _In_ PSHV_VP_DATA Data,
-    _In_ ULONG64 SystemDirectoryTableBase
+    _In_ PSHV_VP_DATA Data
     )
 {
     //
@@ -118,42 +117,17 @@ ShvVpInitialize (
     //
     // Then, capture the entire register state. We will need this, as once we
     // launch the VM, it will begin execution at the defined guest instruction
-    // pointer, which is being captured as part of this call. In other words,
-    // we will return right where we were, but with all our registers corrupted
-    // by the VMCS/VMX initialization code (as guest state does not include
-    // register state). By saving the context here, which includes all general
-    // purpose registers, we guarantee that we return with all of our starting
-    // register values as well!
+    // pointer, which we set to ShvVpRestoreAfterLaunch, with the registers set
+    // to whatever value they were deep inside the VMCS/VMX inialization code.
+    // By using RtlRestoreContext, that function sets the AC flag in EFLAGS and
+    // returns here with our registers restored.
     //
     RtlCaptureContext(&Data->ContextFrame);
-
-    //
-    // As per the above, we might be here because the VM has actually launched.
-    // We can check this by verifying the value of the VmxEnabled field, which
-    // is set to 1 right before VMXLAUNCH is performed. We do not use the Data
-    // parameter or any other local register in this function, and in fact have
-    // defined VmxEnabled as volatile, because as per the above, our register
-    // state is currently dirty due to the VMCALL itself. By using the global
-    // variable combined with an API call, we also make sure that the compiler
-    // will not optimize this access in any way, even on LTGC/Ox builds.
-    //
-    if (ShvGlobalData[KeGetCurrentProcessorNumberEx(NULL)]->VmxEnabled == 0)
+    if ((__readeflags() & (1 << 18)) == 0)
     {
         //
-        // If we are in this branch comparison, it means that we have not yet
-        // attempted to launch the VM, nor that we have launched it. In other
-        // words, this is the first time in ShvVpInitialize. Because of this,
-        // we are free to use all register state, as it is ours to use.
-        //
-        //
-        // First, capture the value of the PML4 for the SYSTEM process, so that
-        // all virtual processors, regardless of which process the current LP
-        // has interrupted, can share the correct kernel address space.
-        //
-        Data->SystemDirectoryTableBase = SystemDirectoryTableBase;
-
-        //
-        // Then, attempt to initialize VMX on this processor
+        // If the AC bit is not set in EFLAGS, it means that we have not yet
+        // launched the VM. Attempt to initialize VMX on this processor.
         //
         ShvVmxLaunchOnVp(Data);
     }
@@ -268,9 +242,16 @@ ShvVpCallbackDpc (
         }
 
         //
+        // First, capture the value of the PML4 for the SYSTEM process, so that
+        // all virtual processors, regardless of which process the current LP
+        // has interrupted, can share the correct kernel address space.
+        //
+        ShvGlobalData[cpuIndex]->SystemDirectoryTableBase = dpcContext->Cr3;
+
+        //
         // Initialize the virtual processor
         //
-        ShvVpInitialize(ShvGlobalData[cpuIndex], dpcContext->Cr3);
+        ShvVpInitialize(ShvGlobalData[cpuIndex]);
 
         //
         // Our hypervisor should now be seen as present on this LP,

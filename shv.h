@@ -57,7 +57,6 @@ typedef struct _SHV_VP_DATA
             ULONGLONG VmcsPhysicalAddress;
             ULONGLONG MsrBitmapPhysicalAddress;
             ULONGLONG EptPml4PhysicalAddress;
-            volatile ULONG VmxEnabled;
         };
     };
 
