@@ -62,7 +62,7 @@ ShvInitialize (
     _In_ PUNICODE_STRING RegistryPath
     )
 {
-    ULONG cpuCount;
+    LONG cpuCount;
     SHV_DPC_CONTEXT dpcContext;
     UNREFERENCED_PARAMETER(RegistryPath);
 
@@ -89,7 +89,8 @@ ShvInitialize (
     NT_ASSERT(PsGetCurrentProcess() == PsInitialSystemProcess);
     dpcContext.Cr3 = __readcr3();
     dpcContext.FailureStatus = STATUS_SUCCESS;
-    dpcContext.InitMask = 0;
+    dpcContext.FailedCpu = -1;
+    dpcContext.InitCount = 0;
     KeGenericCallDpc(ShvVpCallbackDpc, &dpcContext);
 
     //
@@ -98,10 +99,10 @@ ShvInitialize (
     //
     // Note that each VP is responsible for freeing its VP data on failure.
     //
-    if (dpcContext.InitMask != ((1ULL << cpuCount) - 1))
+    if (dpcContext.InitCount != cpuCount)
     {
-        DbgPrintEx(77, 0, "The SHV failed to initialize (0x%lX) CPU Mask: %llx\n",
-                   dpcContext.FailureStatus, dpcContext.InitMask);
+        DbgPrintEx(77, 0, "The SHV failed to initialize (0x%lX) Failed CPU: %d\n",
+                   dpcContext.FailureStatus, dpcContext.FailedCpu);
         NT_ASSERT(dpcContext.FailureStatus != STATUS_SUCCESS);
         ExFreePoolWithTag(ShvGlobalData, 'ShvA');
         return dpcContext.FailureStatus;

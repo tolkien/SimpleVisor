@@ -281,13 +281,14 @@ ShvVpCallbackDpc (
             MmFreeContiguousMemory(ShvGlobalData[cpuIndex]);
             ShvGlobalData[cpuIndex] = NULL;
             dpcContext->FailureStatus = STATUS_HV_NOT_PRESENT;
+            dpcContext->FailedCpu = cpuIndex;
             goto Quickie;
         }
 
         //
         // This CPU is hyperjacked!
         //
-        dpcContext->InitMask |= (1ULL << cpuIndex);
+        InterlockedIncrement(&dpcContext->InitCount);
     }
     else
     {
@@ -300,7 +301,7 @@ ShvVpCallbackDpc (
         //
         // Free the VP data
         //
-        MmFreeContiguousMemory(ShvGlobalData[cpuIndex]);
+        //MmFreeContiguousMemory(ShvGlobalData[cpuIndex]);
         ShvGlobalData[cpuIndex] = NULL;
     }
 
