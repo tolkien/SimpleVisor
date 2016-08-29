@@ -43,13 +43,12 @@ ShvUnload (
     ShvOsDebugPrint("The SHV has been uninstalled.\n");
 }
 
-NTSTATUS
+INT32
 ShvLoad (
     VOID
     )
 {
     SHV_CALLBACK_CONTEXT callbackContext;
-    ULONG cpuCount;
 
     //
     // Attempt to enter VMX root mode on all logical processors. This will
@@ -59,7 +58,7 @@ ShvLoad (
     // should be executing in.
     //
     callbackContext.Cr3 = __readcr3();
-    callbackContext.FailureStatus = STATUS_SUCCESS;
+    callbackContext.FailureStatus = SHV_STATUS_SUCCESS;
     callbackContext.FailedCpu = -1;
     callbackContext.InitCount = 0;
     ShvOsRunCallbackOnProcessors(ShvVpLoadCallback, &callbackContext);
@@ -70,8 +69,7 @@ ShvLoad (
     //
     // Note that each VP is responsible for freeing its VP data on failure.
     //
-    cpuCount = KeQueryActiveProcessorCountEx(ALL_PROCESSOR_GROUPS);
-    if (callbackContext.InitCount != cpuCount)
+    if (callbackContext.InitCount != ShvOsGetActiveProcessorCount())
     {
         ShvOsDebugPrint("The SHV failed to initialize (0x%lX) Failed CPU: %d\n",
                         callbackContext.FailureStatus, callbackContext.FailedCpu);
@@ -82,5 +80,5 @@ ShvLoad (
     // Indicate success.
     //
     ShvOsDebugPrint("The SHV has been installed.\n");
-    return STATUS_SUCCESS;
+    return SHV_STATUS_SUCCESS;
 }

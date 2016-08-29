@@ -27,7 +27,7 @@ ShvVmxEptInitialize (
     _In_ PSHV_VP_DATA VpData
     )
 {
-    ULONGLONG i;
+    UINT64 i;
     VMX_HUGE_PDPTE tempEpdpte;
 
     //
@@ -36,7 +36,7 @@ ShvVmxEptInitialize (
     VpData->Epml4[0].Read = 1;
     VpData->Epml4[0].Write = 1;
     VpData->Epml4[0].Execute = 1;
-    VpData->Epml4[0].PageFrameNumber = MmGetPhysicalAddress(&VpData->Epdpt).QuadPart / PAGE_SIZE;
+    VpData->Epml4[0].PageFrameNumber = ShvOsGetPhysicalAddress(&VpData->Epdpt) / PAGE_SIZE;
 
     //
     // Fill out a RWX Write-back 1GB EPDPTE
@@ -53,7 +53,7 @@ ShvVmxEptInitialize (
     for (i = 0; i < PDPTE_ENTRY_COUNT; i++) VpData->Epdpt[i].PageFrameNumber = i;
 }
 
-BOOLEAN
+UINT8
 ShvVmxEnterRootModeOnVp (
     _In_ PSHV_VP_DATA VpData
     )
@@ -103,10 +103,10 @@ ShvVmxEnterRootModeOnVp (
     //
     // Store the physical addresses of all per-LP structures allocated
     //
-    VpData->VmxOnPhysicalAddress = MmGetPhysicalAddress(&VpData->VmxOn).QuadPart;
-    VpData->VmcsPhysicalAddress = MmGetPhysicalAddress(&VpData->Vmcs).QuadPart;
-    VpData->MsrBitmapPhysicalAddress = MmGetPhysicalAddress(VpData->MsrBitmap).QuadPart;
-    VpData->EptPml4PhysicalAddress = MmGetPhysicalAddress(&VpData->Epml4).QuadPart;
+    VpData->VmxOnPhysicalAddress = ShvOsGetPhysicalAddress(&VpData->VmxOn);
+    VpData->VmcsPhysicalAddress = ShvOsGetPhysicalAddress(&VpData->Vmcs);
+    VpData->MsrBitmapPhysicalAddress = ShvOsGetPhysicalAddress(VpData->MsrBitmap);
+    VpData->EptPml4PhysicalAddress = ShvOsGetPhysicalAddress(&VpData->Epml4);
 
     //
     // Update CR0 with the must-be-zero and must-be-one requirements
@@ -392,13 +392,13 @@ ShvVmxSetupVmcsForVp (
     __vmx_vmwrite(HOST_RIP, (ULONG_PTR)ShvVmxEntry);
 }
 
-BOOLEAN
+UINT8
 ShvVmxProbe (
     VOID
     )
 {
-    INT cpu_info[4];
-    ULONGLONG featureControl;
+    INT32 cpu_info[4];
+    UINT64 featureControl;
 
     //
     // Check the Hypervisor Present-bit
@@ -440,7 +440,7 @@ ShvVmxLaunchOnVp (
     _In_ PSHV_VP_DATA VpData
     )
 {
-    ULONG i;
+    UINT32 i;
 
     //
     // Initialize all the VMX-related MSRs by reading their value

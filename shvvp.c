@@ -22,12 +22,12 @@ Environment:
 
 #include "shv.h"
 
-BOOLEAN
+UINT8
 ShvIsOurHypervisorPresent (
     VOID
     )
 {
-    INT cpuInfo[4];
+    INT32 cpuInfo[4];
 
     //
     // Check if ECX[31h] ("Hypervisor Present Bit") is set in CPUID 1h
@@ -129,7 +129,7 @@ ShvVpInitialize (
     // By using RtlRestoreContext, that function sets the AC flag in EFLAGS and
     // returns here with our registers restored.
     //
-    RtlCaptureContext(&Data->ContextFrame);
+    ShvOsCaptureContext(&Data->ContextFrame);
     if ((__readeflags() & EFLAGS_ALIGN_CHECK) == 0)
     {
         //
@@ -145,7 +145,7 @@ ShvVpUnloadCallback (
     _In_ PSHV_CALLBACK_CONTEXT Context
     )
 {
-    INT cpuInfo[4];
+    INT32 cpuInfo[4];
     PSHV_VP_DATA vpData;
     UNREFERENCED_PARAMETER(Context);
 
@@ -154,7 +154,7 @@ ShvVpUnloadCallback (
     // the VP data for the current CPU, which we must free.
     //
     __cpuidex(cpuInfo, 0x41414141, 0x42424242);
-    vpData = (PSHV_VP_DATA)((ULONG64)cpuInfo[0] << 32 | cpuInfo[1]);
+    vpData = (PSHV_VP_DATA)((UINT64)cpuInfo[0] << 32 | cpuInfo[1]);
     ShvOsFreeContiguousAlignedMemory(vpData);
 
     //
@@ -206,9 +206,8 @@ ShvVpLoadCallback (
     _In_ PSHV_CALLBACK_CONTEXT Context
     )
 {
-    ULONG cpuIndex;
     PSHV_VP_DATA vpData;
-    NTSTATUS status;
+    INT32 status;
 
     //
     // Detect if the hardware appears to support VMX root mode to start.
@@ -216,7 +215,7 @@ ShvVpLoadCallback (
     //
     if (!ShvVmxProbe())
     {
-        status = STATUS_HV_FEATURE_UNAVAILABLE;
+        status = SHV_STATUS_NOT_AVAILABLE;
         goto Failure;
     }
 
@@ -226,7 +225,7 @@ ShvVpLoadCallback (
     vpData = ShvVpAllocateData();
     if (vpData == NULL)
     {
-        status = STATUS_HV_NO_RESOURCES;
+        status = SHV_STATUS_NO_RESOURCES;
         goto Failure;
     }
 
@@ -252,22 +251,21 @@ ShvVpLoadCallback (
         // Free the per-processor data
         //
         ShvOsFreeContiguousAlignedMemory(vpData);
-        status = STATUS_HV_NOT_PRESENT;
+        status = SHV_STATUS_NOT_PRESENT;
         goto Failure;
     }
 
     //
     // This CPU is hyperjacked!
     //
-    _InterlockedIncrement((PLONG)&Context->InitCount);
+    _InterlockedIncrement((volatile long*)&Context->InitCount);
     return;
 
 Failure:
     //
     // Return failure
     //
-    cpuIndex = KeGetCurrentProcessorNumberEx(NULL);
-    Context->FailedCpu = cpuIndex;
+    Context->FailedCpu = ShvOsGetCurrentProcessorNumber();
     Context->FailureStatus = status;
     return;
 }

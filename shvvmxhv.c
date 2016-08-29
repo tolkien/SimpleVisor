@@ -41,7 +41,7 @@ ShvVmxResume (
 ULONG_PTR
 FORCEINLINE
 ShvVmxRead (
-    _In_ ULONG VmcsFieldId
+    _In_ UINT32 VmcsFieldId
     )
 {
     SIZE_T FieldData;
@@ -74,7 +74,7 @@ ShvVmxHandleCpuid (
     _In_ PSHV_VP_STATE VpState
     )
 {
-    INT cpu_info[4];
+    INT32 cpu_info[4];
 
     //
     // Check for the magic CPUID sequence, and check that it is is coming from
@@ -94,7 +94,7 @@ ShvVmxHandleCpuid (
     // Otherwise, issue the CPUID to the logical processor based on the indexes
     // on the VP's GPRs.
     //
-    __cpuidex(cpu_info, (INT)VpState->VpRegs->Rax, (INT)VpState->VpRegs->Rcx);
+    __cpuidex(cpu_info, (INT32)VpState->VpRegs->Rax, (INT32)VpState->VpRegs->Rcx);
 
     //
     // Check if this was CPUID 1h, which is the features request.
@@ -132,7 +132,7 @@ ShvVmxHandleXsetbv (
     //
     // Simply issue the XSETBV instruction on the native logical processor.
     //
-    _xsetbv((ULONG)VpState->VpRegs->Rcx,
+    _xsetbv((UINT32)VpState->VpRegs->Rcx,
             VpState->VpRegs->Rdx << 32 |
             VpState->VpRegs->Rax);
 }
@@ -220,7 +220,7 @@ ShvVmxEntryHandler (
     //
     // Get the per-VP data for this processor.
     //
-    vpData = (PVOID)((ULONG_PTR)(Context + 1) - KERNEL_STACK_SIZE);
+    vpData = (VOID*)((ULONG_PTR)(Context + 1) - KERNEL_STACK_SIZE);
 
     //
     // Build a little stack context to make it easier to keep track of certain
@@ -282,8 +282,8 @@ ShvVmxEntryHandler (
         // a longjmp back to that location.
         //
         Context->Rsp = guestContext.GuestRsp;
-        Context->Rip = (ULONG64)guestContext.GuestRip;
-        Context->EFlags = (ULONG)guestContext.GuestEFlags;
+        Context->Rip = (UINT64)guestContext.GuestRip;
+        Context->EFlags = (UINT32)guestContext.GuestEFlags;
 
         //
         // Turn off VMX root mode on this logical processor. We're done here.

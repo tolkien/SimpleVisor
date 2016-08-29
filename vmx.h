@@ -354,42 +354,42 @@ enum vmcs_field {
 typedef struct _VMX_GDTENTRY64
 {
     ULONG_PTR Base;
-    ULONG Limit;
+    UINT32 Limit;
     union
     {
         struct
         {
-            UCHAR Flags1;
-            UCHAR Flags2;
-            UCHAR Flags3;
-            UCHAR Flags4;
+            UINT8 Flags1;
+            UINT8 Flags2;
+            UINT8 Flags3;
+            UINT8 Flags4;
         } Bytes;
         struct
         {
-            USHORT SegmentType : 4;
-            USHORT DescriptorType : 1;
-            USHORT Dpl : 2;
-            USHORT Present : 1;
+            UINT16 SegmentType : 4;
+            UINT16 DescriptorType : 1;
+            UINT16 Dpl : 2;
+            UINT16 Present : 1;
 
-            USHORT Reserved : 4;
-            USHORT System : 1;
-            USHORT LongMode : 1;
-            USHORT DefaultBig : 1;
-            USHORT Granularity : 1;
+            UINT16 Reserved : 4;
+            UINT16 System : 1;
+            UINT16 LongMode : 1;
+            UINT16 DefaultBig : 1;
+            UINT16 Granularity : 1;
 
-            USHORT Unusable : 1;
-            USHORT Reserved2 : 15;
+            UINT16 Unusable : 1;
+            UINT16 Reserved2 : 15;
         } Bits;
-        ULONG AccessRights;
+        UINT32 AccessRights;
     };
-    USHORT Selector;
+    UINT16 Selector;
 } VMX_GDTENTRY64, *PVMX_GDTENTRY64;
 
 typedef struct DECLSPEC_ALIGN(PAGE_SIZE) _VMX_VMCS
 {
-    ULONG RevisionId;
-    ULONG AbortIndicator;
-    UCHAR Data[PAGE_SIZE - 8];
+    UINT32 RevisionId;
+    UINT32 AbortIndicator;
+    UINT8 Data[PAGE_SIZE - 8];
 } VMX_VMCS, *PVMX_VMCS;
 
 typedef struct _VMX_EPTP
@@ -398,14 +398,14 @@ typedef struct _VMX_EPTP
     {
         struct
         {
-            ULONGLONG Type : 3;
-            ULONGLONG PageWalkLength : 3;
-            ULONGLONG EnableAccessAndDirtyFlags : 1;
-            ULONGLONG Reserved : 5;
-            ULONGLONG PageFrameNumber : 36;
-            ULONGLONG ReservedHigh : 16;
+            UINT64 Type : 3;
+            UINT64 PageWalkLength : 3;
+            UINT64 EnableAccessAndDirtyFlags : 1;
+            UINT64 Reserved : 5;
+            UINT64 PageFrameNumber : 36;
+            UINT64 ReservedHigh : 16;
         };
-        ULONGLONG AsUlonglong;
+        UINT64 AsUlonglong;
     };
 } VMX_EPTP, *PVMX_EPTP;
 
@@ -415,17 +415,17 @@ typedef struct _VMX_EPML4E
     {
         struct
         {
-            ULONGLONG Read : 1;
-            ULONGLONG Write : 1;
-            ULONGLONG Execute : 1;
-            ULONGLONG Reserved : 5;
-            ULONGLONG Accessed : 1;
-            ULONGLONG SoftwareUse : 3;
-            ULONGLONG PageFrameNumber : 36;
-            ULONGLONG ReservedHigh : 4;
-            ULONGLONG SoftwareUseHigh : 12;
+            UINT64 Read : 1;
+            UINT64 Write : 1;
+            UINT64 Execute : 1;
+            UINT64 Reserved : 5;
+            UINT64 Accessed : 1;
+            UINT64 SoftwareUse : 3;
+            UINT64 PageFrameNumber : 36;
+            UINT64 ReservedHigh : 4;
+            UINT64 SoftwareUseHigh : 12;
         };
-        ULONGLONG AsUlonglong;
+        UINT64 AsUlonglong;
     };
 } VMX_EPML4E, *PVMX_EPML4E;
 
@@ -435,27 +435,27 @@ typedef struct _VMX_HUGE_PDPTE
     {
         struct
         {
-            ULONGLONG Read : 1;
-            ULONGLONG Write : 1;
-            ULONGLONG Execute : 1;
-            ULONGLONG Type : 3;
-            ULONGLONG IgnorePat : 1;
-            ULONGLONG Large : 1;
-            ULONGLONG Accessed : 1;
-            ULONGLONG Dirty : 1;
-            ULONGLONG SoftwareUse : 2;
-            ULONGLONG Reserved : 18;
-            ULONGLONG PageFrameNumber : 18;
-            ULONGLONG ReservedHigh : 4;
-            ULONGLONG SoftwareUseHigh : 11;
-            ULONGLONG SupressVme : 1;
+            UINT64 Read : 1;
+            UINT64 Write : 1;
+            UINT64 Execute : 1;
+            UINT64 Type : 3;
+            UINT64 IgnorePat : 1;
+            UINT64 Large : 1;
+            UINT64 Accessed : 1;
+            UINT64 Dirty : 1;
+            UINT64 SoftwareUse : 2;
+            UINT64 Reserved : 18;
+            UINT64 PageFrameNumber : 18;
+            UINT64 ReservedHigh : 4;
+            UINT64 SoftwareUseHigh : 11;
+            UINT64 SupressVme : 1;
         };
-        ULONGLONG AsUlonglong;
+        UINT64 AsUlonglong;
     };
 } VMX_HUGE_PDPTE, *PVMX_HUGE_PDPTE;
 
-C_ASSERT(sizeof(VMX_EPTP) == sizeof(ULONGLONG));
-C_ASSERT(sizeof(VMX_EPML4E) == sizeof(ULONGLONG));
+C_ASSERT(sizeof(VMX_EPTP) == sizeof(UINT64));
+C_ASSERT(sizeof(VMX_EPML4E) == sizeof(UINT64));
 
 #define PML4E_ENTRY_COUNT 512
 #define PDPTE_ENTRY_COUNT 512

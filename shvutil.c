@@ -24,8 +24,8 @@ Environment:
 
 VOID
 ShvUtilConvertGdtEntry (
-    _In_ PVOID GdtBase,
-    _In_ USHORT Selector,
+    _In_ VOID* GdtBase,
+    _In_ UINT16 Selector,
     _Out_ PVMX_GDTENTRY64 VmxGdtEntry
     )
 {
@@ -36,7 +36,7 @@ ShvUtilConvertGdtEntry (
     // Windows does not use an LDT for these selectors in kernel, so the TI bit
     // should never be set.
     //
-    gdtEntry = (PKGDTENTRY64)((ULONG_PTR)GdtBase + (Selector & ~RPL_MASK));
+    gdtEntry = (PKGDTENTRY64)((UINT_PTR)GdtBase + (Selector & ~RPL_MASK));
 
     //
     // Write the selector directly 
@@ -59,7 +59,7 @@ ShvUtilConvertGdtEntry (
     //
     VmxGdtEntry->Base = ((gdtEntry->Bytes.BaseHigh << 24) |
                          (gdtEntry->Bytes.BaseMiddle << 16) |
-                         (gdtEntry->BaseLow)) & MAXULONG;
+                         (gdtEntry->BaseLow)) & MAXUINT32;
     VmxGdtEntry->Base |= ((gdtEntry->Bits.Type & 0x10) == 0) ?
                          ((ULONG_PTR)gdtEntry->BaseUpper << 32) : 0;
 
@@ -77,10 +77,10 @@ ShvUtilConvertGdtEntry (
     VmxGdtEntry->Bits.Unusable = !gdtEntry->Bits.Present;
 }
 
-ULONG
+UINT32
 ShvUtilAdjustMsr (
     _In_ LARGE_INTEGER ControlValue,
-    _In_ ULONG DesiredValue
+    _In_ UINT32 DesiredValue
     )
 {
     //

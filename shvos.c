@@ -20,7 +20,9 @@ Environment:
 
 --*/
 
-#include "shv.h"
+#include <ntifs.h>
+#include <varargs.h>
+#include "shv_x.h"
 
 NTKERNELAPI
 _IRQL_requires_max_(APC_LEVEL)
@@ -62,6 +64,34 @@ typedef struct _SHV_DPC_CONTEXT
     PSHV_CPU_CALLBACK Routine;
     PSHV_CALLBACK_CONTEXT Context;
 } SHV_DPC_CONTEXT, *PSHV_DPC_CONTEXT;
+
+NTSTATUS
+FORCEINLINE
+ShvOsErrorToError (
+    INT32 Error
+    )
+{
+    //
+    // Convert the possible SimpleVisor errors into NT Hyper-V Errors
+    //
+    if (Error == SHV_STATUS_NOT_AVAILABLE)
+    {
+        return STATUS_HV_FEATURE_UNAVAILABLE;
+    }
+    if (Error == SHV_STATUS_NO_RESOURCES)
+    {
+        return STATUS_HV_NO_RESOURCES;
+    }
+    if (Error == SHV_STATUS_NOT_PRESENT)
+    {
+        return STATUS_HV_NOT_PRESENT;
+    }
+
+    //
+    // Unknown/unexpected error
+    //
+    return STATUS_UNSUCCESSFUL;
+}
 
 VOID
 ShvOsDpcRoutine (
@@ -126,6 +156,17 @@ ShvOsAllocateContigousAlignedMemory (
                                           KeGetCurrentNodeNumber());
 }
 
+ULONGLONG
+ShvOsGetPhysicalAddress (
+    _In_ PVOID BaseAddress
+    )
+{
+    //
+    // Let the memory manager convert it
+    //
+    return MmGetPhysicalAddress(BaseAddress).QuadPart;
+}
+
 VOID
 ShvOsRunCallbackOnProcessors (
     _In_ PSHV_CPU_CALLBACK Routine,
@@ -153,6 +194,55 @@ ShvOsRestoreContext (
     // Windows provides a nice OS function to do this
     //
     RtlRestoreContext(ContextRecord, NULL);
+}
+
+VOID
+ShvOsCaptureContext (
+    _In_ PCONTEXT ContextRecord
+    )
+{
+    //
+    // Windows provides a nice OS function to do this
+    //
+    RtlCaptureContext(ContextRecord);
+}
+
+INT32
+ShvOsGetCurrentProcessorNumber (
+    VOID
+    )
+{
+    //
+    // Get the group-wide CPU index
+    //
+    return (INT32)KeGetCurrentProcessorNumberEx(NULL);
+}
+
+INT32
+ShvOsGetActiveProcessorCount (
+    VOID
+    )
+{
+    //
+    // Get the group-wide CPU count
+    //
+    return (INT32)KeQueryActiveProcessorCountEx(ALL_PROCESSOR_GROUPS);
+}
+
+VOID
+ShvOsDebugPrint (
+    _In_ PCCH Format,
+    ...
+    )
+{
+    va_list arglist;
+
+    //
+    // Call the debugger API
+    //
+    va_start(arglist);
+    vDbgPrintEx(DPFLTR_IHVDRIVER_ID, DPFLTR_ERROR_LEVEL, Format, arglist);
+    va_end(arglist);
 }
 
 VOID
@@ -184,6 +274,6 @@ DriverEntry (
     //
     // Load the hypervisor
     //
-    return ShvLoad();
+    return ShvOsErrorToError(ShvLoad());
 }
 
