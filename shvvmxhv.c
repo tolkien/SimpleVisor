@@ -262,6 +262,13 @@ ShvVmxEntryHandler (
     if (guestContext.ExitVm)
     {
         //
+        // Return the VP Data structure in RAX:RBX which is going to be part of
+        // the CPUID response that the caller (ShvVpUninitialize) expects back.
+        //
+        Context->Rax = (ULONG_PTR)vpData >> 32;
+        Context->Rbx = (ULONG_PTR)vpData & 0xFFFFFFFF;
+
+        //
         // When running in VMX root mode, the processor will set limits of the
         // GDT and IDT to 0xFFFF (notice that there are no Host VMCS fields to
         // set these values). This causes problems with PatchGuard, which will

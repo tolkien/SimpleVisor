@@ -104,10 +104,7 @@ ShvVpRestoreAfterLaunch (
 
     //
     // And finally, restore the context, so that all register and stack
-    // state is finally restored. Note that by continuing to reference the
-    // per-VP data this way, the compiler will continue to generate non-
-    // optimized accesses, guaranteeing that no previous register state
-    // will be used.
+    // state is finally restored.
     //
     RtlRestoreContext(&vpData->ContextFrame, NULL);
 }
@@ -148,19 +145,24 @@ ShvVpUninitialize (
     VOID
     )
 {
-    INT dummy[4];
+    INT cpuInfo[4];
+    PSHV_VP_DATA vpData;
 
     //
-    // Send the magic shutdown instruction sequence
+    // Send the magic shutdown instruction sequence. It will return in EAX:EBX
+    // the VP data for the current CPU, which we must free.
     //
-    __cpuidex(dummy, 0x41414141, 0x42424242);
+    __cpuidex(cpuInfo, 0x41414141, 0x42424242);
+    vpData = (PSHV_VP_DATA)((ULONG64)cpuInfo[0] << 32 | cpuInfo[1]);
+    DbgPrintEx(77, 0, "DAta: 0x%p\n", vpData);
+    MmFreeContiguousMemory(vpData);
 
     //
     // The processor will return here after the hypervisor issues a VMXOFF
     // instruction and restores the CPU context to this location. Unfortunately
     // because this is done with RtlRestoreContext which returns using "iretq",
     // this causes the processor to remove the RPL bits off the segments. As
-    // the x64 kernel does not expect kernel-mode code to chang ethe value of
+    // the x64 kernel does not expect kernel-mode code to change the value of
     // any segments, this results in the DS and ES segments being stuck 0x20,
     // and the FS segment being stuck at 0x50, until the next context switch.
     //
@@ -291,11 +293,6 @@ ShvVpCallbackDpc (
         //
         ShvVpUninitialize();
         NT_ASSERT(ShvIsOurHypervisorPresent() == FALSE);
-
-        //
-        // Free the VP data
-        //
-        //MmFreeContiguousMemory(ShvGlobalData[cpuIndex]);
     }
 
 Quickie:
