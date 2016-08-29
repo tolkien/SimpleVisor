@@ -44,29 +44,32 @@ typedef struct _SHV_SPECIAL_REGISTERS
 
 typedef struct _SHV_VP_DATA
 {
-    SHV_SPECIAL_REGISTERS SpecialRegisters;
-    CONTEXT ContextFrame;
-
-    ULONG VpIndex;
-    volatile ULONG VmxEnabled;
-
-    ULONG64 SystemDirectoryTableBase;
-    LARGE_INTEGER MsrData[17];
-    ULONGLONG VmxOnPhysicalAddress;
-    ULONGLONG VmcsPhysicalAddress;
-    ULONGLONG MsrBitmapPhysicalAddress;
-    ULONGLONG EptPml4PhysicalAddress;
+    union
+    {
+        DECLSPEC_ALIGN(PAGE_SIZE) UCHAR ShvStackLimit[KERNEL_STACK_SIZE];
+        struct
+        {
+            SHV_SPECIAL_REGISTERS SpecialRegisters;
+            CONTEXT ContextFrame;
+            ULONG64 SystemDirectoryTableBase;
+            LARGE_INTEGER MsrData[17];
+            ULONGLONG VmxOnPhysicalAddress;
+            ULONGLONG VmcsPhysicalAddress;
+            ULONGLONG MsrBitmapPhysicalAddress;
+            ULONGLONG EptPml4PhysicalAddress;
+            volatile ULONG VmxEnabled;
+        };
+    };
 
     DECLSPEC_ALIGN(PAGE_SIZE) UCHAR MsrBitmap[PAGE_SIZE];
     DECLSPEC_ALIGN(PAGE_SIZE) VMX_EPML4E Epml4[PML4E_ENTRY_COUNT];
     DECLSPEC_ALIGN(PAGE_SIZE) VMX_HUGE_PDPTE Epdpt[PDPTE_ENTRY_COUNT];
 
-    DECLSPEC_ALIGN(PAGE_SIZE) UCHAR ShvStackLimit[KERNEL_STACK_SIZE];
     DECLSPEC_ALIGN(PAGE_SIZE) VMX_VMCS VmxOn;
     DECLSPEC_ALIGN(PAGE_SIZE) VMX_VMCS Vmcs;
 } SHV_VP_DATA, *PSHV_VP_DATA;
 
-C_ASSERT(sizeof(SHV_VP_DATA) == (KERNEL_STACK_SIZE + 6 * PAGE_SIZE));
+C_ASSERT(sizeof(SHV_VP_DATA) == (KERNEL_STACK_SIZE + 5 * PAGE_SIZE));
 C_ASSERT((FIELD_OFFSET(SHV_VP_DATA, Epml4) % PAGE_SIZE) == 0);
 C_ASSERT((FIELD_OFFSET(SHV_VP_DATA, Epdpt) % PAGE_SIZE) == 0);
 
