@@ -160,7 +160,7 @@ ShvVpUnloadCallback (
     // If SimpleVisor is disabled for some reason, CPUID won't return anything
     // so don't free any memory. It will unfortunately end up leaked.
     //
-    vpData = (PSHV_VP_DATA)((UINT64)cpuInfo[0] << 32 | cpuInfo[1]);
+    vpData = (PSHV_VP_DATA)((UINT64)cpuInfo[0] << 32 | (UINT32)cpuInfo[1]);
     if (vpData != NULL)
     {
         ShvOsFreeContiguousAlignedMemory(vpData);
