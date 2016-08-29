@@ -140,7 +140,14 @@ ShvVmxEptInitialize (
     _In_ PSHV_VP_DATA VpData
     );
 
+typedef struct _SHV_DPC_CONTEXT
+{
+    ULONG64 Cr3;
+    NTSTATUS FailureStatus;
+    ULONGLONG InitMask;
+} SHV_DPC_CONTEXT, *PSHV_DPC_CONTEXT;
+
 KDEFERRED_ROUTINE ShvVpCallbackDpc;
 
-extern PSHV_VP_DATA ShvGlobalData;
+extern PSHV_VP_DATA* ShvGlobalData;
 

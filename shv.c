@@ -22,46 +22,14 @@ Environment:
 
 #include "shv.h"
 
-PSHV_VP_DATA ShvGlobalData;
-
-BOOLEAN
-ShvIsOurHypervisorPresent (
-    VOID
-    )
-{
-    INT cpuInfo[4];
-
-    //
-    // Check if ECX[31h] ("Hypervisor Present Bit") is set in CPUID 1h
-    //
-    __cpuid(cpuInfo, 1);
-    if (cpuInfo[2] & HYPERV_HYPERVISOR_PRESENT_BIT)
-    {
-        //
-        // Next, check if this is a compatible Hypervisor, and if it has the
-        // SimpleVisor signature
-        //
-        __cpuid(cpuInfo, HYPERV_CPUID_INTERFACE);
-        if (cpuInfo[0] == ' vhS')
-        {
-            //
-            // It's us!
-            //
-            return TRUE;
-        }
-    }
-
-    //
-    // No Hypervisor, or someone else's
-    //
-    return FALSE;
-}
+PSHV_VP_DATA* ShvGlobalData;
 
 VOID
 ShvUnload (
     _In_ PDRIVER_OBJECT DriverObject
     )
 {
+    SHV_DPC_CONTEXT dpcContext;
     UNREFERENCED_PARAMETER(DriverObject);
 
     //
@@ -73,21 +41,14 @@ ShvUnload (
     // Note that if SHV is not loaded on any of the LPs, this routine will not
     // perform any work, but will not fail in any way.
     //
-    KeGenericCallDpc(ShvVpCallbackDpc, NULL);
+    dpcContext.Cr3 = 0;
+    KeGenericCallDpc(ShvVpCallbackDpc, &dpcContext);
 
     //
-    // If the SHV was not fully/correctly loaded, we may not have global data
-    // allocated yet. Check for that before freeing it.
+    // Global data is always allocated and should be freed
     //
-    // Note that KeGenericCallDpc is guaranteed to return only after all LPs
-    // have succesfully executed the DPC and synchronized. This means that SHV
-    // is fully unloaded, and no further VMEXITs can return. It is safe to free
-    // this data.
-    //
-    if (ShvGlobalData != NULL)
-    {
-        MmFreeContiguousMemory(ShvGlobalData);
-    }
+    NT_ASSERT(ShvGlobalData);
+    ExFreePoolWithTag(ShvGlobalData, 'ShvA');
 
     //
     // Indicate unload
@@ -101,25 +62,22 @@ ShvInitialize (
     _In_ PUNICODE_STRING RegistryPath
     )
 {
+    ULONG cpuCount;
+    SHV_DPC_CONTEXT dpcContext;
     UNREFERENCED_PARAMETER(RegistryPath);
-
-    //
-    // Next, detect if the hardware appears to support VMX root mode to start.
-    // No attempts are made to enable this if it is lacking or disabled.
-    //
-    if (!ShvVmxProbe())
-    {
-        return STATUS_HV_FEATURE_UNAVAILABLE;
-    }
 
     //
     // Allocate the global shared data which all virtual processors will share.
     //
-    ShvGlobalData = ShvVpAllocateGlobalData();
+    cpuCount = KeQueryActiveProcessorCountEx(ALL_PROCESSOR_GROUPS);
+    ShvGlobalData = ExAllocatePoolWithTag(NonPagedPoolNx,
+                                          cpuCount * sizeof(PVOID),
+                                          'ShvA');
     if (!ShvGlobalData)
     {
         return STATUS_HV_INSUFFICIENT_BUFFER;
     }
+    __stosq((PULONG64)ShvGlobalData, 0, cpuCount);
 
     //
     // Attempt to enter VMX root mode on all logical processors. This will
@@ -129,16 +87,23 @@ ShvInitialize (
     // should be executing in.
     //
     NT_ASSERT(PsGetCurrentProcess() == PsInitialSystemProcess);
-    KeGenericCallDpc(ShvVpCallbackDpc, (PVOID)__readcr3());
+    dpcContext.Cr3 = __readcr3();
+    dpcContext.FailureStatus = STATUS_SUCCESS;
+    dpcContext.InitMask = 0;
+    KeGenericCallDpc(ShvVpCallbackDpc, &dpcContext);
 
     //
-    // Our hypervisor should now be seen as present on this (and all other) LP,
-    // as the SHV correctly handles CPUID ECX features register.
+    // Check if all LPs are now hypervised. Return the failure code of at least
+    // one of them. 
     //
-    if (ShvIsOurHypervisorPresent() == FALSE)
+    // Note that each VP is responsible for freeing its VP data on failure.
+    //
+    if (dpcContext.InitMask != (1ULL << cpuCount))
     {
-        MmFreeContiguousMemory(ShvGlobalData);
-        return STATUS_HV_NOT_PRESENT;
+        DbgPrintEx(77, 0, "The SHV failed to initialize. CPU Mask: %llx\n",
+                   dpcContext.InitMask);
+        ExFreePoolWithTag(ShvGlobalData, 'ShvA');
+        return dpcContext.FailureStatus;
     }
 
     //

@@ -22,6 +22,39 @@ Environment:
 
 #include "shv.h"
 
+BOOLEAN
+ShvIsOurHypervisorPresent (
+    VOID
+    )
+{
+    INT cpuInfo[4];
+
+    //
+    // Check if ECX[31h] ("Hypervisor Present Bit") is set in CPUID 1h
+    //
+    __cpuid(cpuInfo, 1);
+    if (cpuInfo[2] & HYPERV_HYPERVISOR_PRESENT_BIT)
+    {
+        //
+        // Next, check if this is a compatible Hypervisor, and if it has the
+        // SimpleVisor signature
+        //
+        __cpuid(cpuInfo, HYPERV_CPUID_INTERFACE);
+        if (cpuInfo[0] == ' vhS')
+        {
+            //
+            // It's us!
+            //
+            return TRUE;
+        }
+    }
+
+    //
+    // No Hypervisor, or someone else's
+    //
+    return FALSE;
+}
+
 VOID
 ShvCaptureSpecialRegisters (
     _In_ PSHV_SPECIAL_REGISTERS SpecialRegisters
@@ -81,7 +114,7 @@ ShvVpInitialize (
     // variable combined with an API call, we also make sure that the compiler
     // will not optimize this access in any way, even on LTGC/Ox builds.
     //
-    if (ShvGlobalData[KeGetCurrentProcessorNumberEx(NULL)].VmxEnabled == 1)
+    if (ShvGlobalData[KeGetCurrentProcessorNumberEx(NULL)]->VmxEnabled == 1)
     {
         //
         // We now indicate that the VM has launched, and that we are about to
@@ -90,7 +123,7 @@ ShvVpInitialize (
         // this time the value of VmxEnabled will be two, bypassing the if and
         // else if checks.
         //
-        ShvGlobalData[KeGetCurrentProcessorNumberEx(NULL)].VmxEnabled = 2;
+        ShvGlobalData[KeGetCurrentProcessorNumberEx(NULL)]->VmxEnabled = 2;
 
         //
         // And finally, restore the context, so that all register and stack
@@ -99,7 +132,7 @@ ShvVpInitialize (
         // optimized accesses, guaranteeing that no previous register state
         // will be used.
         //
-        RtlRestoreContext(&ShvGlobalData[KeGetCurrentProcessorNumberEx(NULL)].ContextFrame, NULL);
+        RtlRestoreContext(&ShvGlobalData[KeGetCurrentProcessorNumberEx(NULL)]->ContextFrame, NULL);
     }
     //
     // If we are in this branch comparison, it means that we have not yet
@@ -156,6 +189,44 @@ ShvVpUninitialize (
     ShvVmxCleanup(KGDT64_R3_DATA | RPL_MASK, KGDT64_R3_CMTEB | RPL_MASK);
 }
 
+PSHV_VP_DATA
+ShvVpAllocateData (
+    VOID
+    )
+{
+    PHYSICAL_ADDRESS lowest, highest;
+    PSHV_VP_DATA data;
+
+    //
+    // The entire address range is OK for this allocation
+    //
+    lowest.QuadPart = 0;
+    highest.QuadPart = lowest.QuadPart - 1;
+
+    //
+    // Allocate a contiguous chunk of RAM to back this allocation and make sure
+    // that it is RW only, instead of RWX, by using the new Windows 8 API.
+    //
+    data = MmAllocateContiguousNodeMemory(sizeof(SHV_VP_DATA),
+                                          lowest,
+                                          highest,
+                                          lowest,
+                                          PAGE_READWRITE,
+                                          KeGetCurrentNodeNumber());
+    if (data != NULL)
+    {
+        //
+        // Zero out the entire data region
+        //
+        __stosq((PULONG64)data, 0, sizeof(SHV_VP_DATA) / sizeof(ULONG64));
+    }
+
+    //
+    // Return what is hopefully a valid pointer, otherwise NULL.
+    //
+    return data;
+}
+
 VOID
 ShvVpCallbackDpc (
     _In_ PRKDPC Dpc,
@@ -164,32 +235,77 @@ ShvVpCallbackDpc (
     _In_opt_ PVOID SystemArgument2
     )
 {
-    PSHV_VP_DATA vpData;
+    PSHV_DPC_CONTEXT dpcContext = Context;
+    ULONG cpuIndex;
     UNREFERENCED_PARAMETER(Dpc);
 
     //
-    // Get the per-VP data for this logical processor
+    // Detect if the hardware appears to support VMX root mode to start.
+    // No attempts are made to enable this if it is lacking or disabled.
     //
-    vpData = &ShvGlobalData[KeGetCurrentProcessorNumberEx(NULL)];
+    if (!ShvVmxProbe())
+    {
+        dpcContext->FailureStatus = STATUS_HV_FEATURE_UNAVAILABLE;
+        goto Quickie;
+    }
 
     //
-    // Check if we are loading, or unloading
+    // Check if we are loading, or unloading, and which CPU this is
     //
-    if (ARGUMENT_PRESENT(Context))
+    cpuIndex = KeGetCurrentProcessorNumberEx(NULL);
+    if (dpcContext->Cr3 != 0)
     {
+        //
+        // Allocate the per-VP data for this logical processor
+        //
+        ShvGlobalData[cpuIndex] = ShvVpAllocateData();
+        if (ShvGlobalData[cpuIndex] == NULL)
+        {
+            dpcContext->FailureStatus = STATUS_HV_NO_RESOURCES;
+            goto Quickie;
+        }
+
         //
         // Initialize the virtual processor
         //
-        ShvVpInitialize(vpData, (ULONG64)Context);
+        ShvVpInitialize(ShvGlobalData[cpuIndex], dpcContext->Cr3);
+
+        //
+        // Our hypervisor should now be seen as present on this LP,
+        // as the SHV correctly handles CPUID ECX features register.
+        //
+        if (ShvIsOurHypervisorPresent() == FALSE)
+        {
+            //
+            // Free the per-processor data
+            //
+            MmFreeContiguousMemory(ShvGlobalData[cpuIndex]);
+            ShvGlobalData[cpuIndex] = NULL;
+            dpcContext->FailureStatus = STATUS_HV_NOT_PRESENT;
+            goto Quickie;
+        }
+
+        //
+        // This CPU is hyperjacked!
+        //
+        dpcContext->InitMask |= (1ULL << cpuIndex);
     }
     else
     {
         //
         // Tear down the virtual processor
         //
-        ShvVpUninitialize(vpData);
+        ShvVpUninitialize(ShvGlobalData[cpuIndex]);
+        NT_ASSERT(ShvIsOurHypervisorPresent() == FALSE);
+
+        //
+        // Free the VP data
+        //
+        MmFreeContiguousMemory(ShvGlobalData[cpuIndex]);
+        ShvGlobalData[cpuIndex] = NULL;
     }
 
+Quickie:
     //
     // Wait for all DPCs to synchronize at this point
     //
@@ -200,54 +316,3 @@ ShvVpCallbackDpc (
     //
     KeSignalCallDpcDone(SystemArgument1);
 }
-
-PSHV_VP_DATA
-ShvVpAllocateGlobalData (
-    VOID
-    )
-{
-    PHYSICAL_ADDRESS lowest, highest;
-    PSHV_VP_DATA data;
-    ULONG cpuCount, size;
-
-    //
-    // The entire address range is OK for this allocation
-    //
-    lowest.QuadPart = 0;
-    highest.QuadPart = lowest.QuadPart - 1;
-
-    //
-    // Query the number of logical processors, including those potentially in
-    // groups other than 0. This allows us to support >64 processors.
-    //
-    cpuCount = KeQueryActiveProcessorCountEx(ALL_PROCESSOR_GROUPS);
-
-    //
-    // Each processor will receive its own slice of per-virtual processor data.
-    //
-    size = cpuCount * sizeof(SHV_VP_DATA);
-
-    //
-    // Allocate a contiguous chunk of RAM to back this allocation and make sure
-    // that it is RW only, instead of RWX, by using the new Windows 8 API.
-    //
-    data = MmAllocateContiguousNodeMemory(size,
-                                          lowest,
-                                          highest,
-                                          lowest,
-                                          PAGE_READWRITE,
-                                          MM_ANY_NODE_OK);
-    if (data != NULL)
-    {
-        //
-        // Zero out the entire data region
-        //
-        __stosq((PULONGLONG)data, 0, size / sizeof(ULONGLONG));
-    }
-
-    //
-    // Return what is hopefully a valid pointer, otherwise NULL.
-    //
-    return data;
-}
-

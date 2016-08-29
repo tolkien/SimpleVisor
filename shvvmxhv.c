@@ -235,7 +235,7 @@ ShvVmxEntryHandler (
     //
     // Get the per-VP data for this processor.
     //
-    vpData = &ShvGlobalData[KeGetCurrentProcessorNumberEx(NULL)];
+    vpData = ShvGlobalData[KeGetCurrentProcessorNumberEx(NULL)];
 
     //
     // Build a little stack context to make it easier to keep track of certain
