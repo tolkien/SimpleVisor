@@ -22,8 +22,6 @@ Environment:
 
 #include "shv.h"
 
-PSHV_VP_DATA* ShvGlobalData;
-
 VOID
 ShvUnload (
     _In_ PDRIVER_OBJECT DriverObject
@@ -45,12 +43,6 @@ ShvUnload (
     KeGenericCallDpc(ShvVpCallbackDpc, &dpcContext);
 
     //
-    // Global data is always allocated and should be freed
-    //
-    NT_ASSERT(ShvGlobalData);
-    ExFreePoolWithTag(ShvGlobalData, 'ShvA');
-
-    //
     // Indicate unload
     //
     DbgPrintEx(77, 0, "The SHV has been uninstalled.\n");
@@ -62,22 +54,8 @@ ShvInitialize (
     _In_ PUNICODE_STRING RegistryPath
     )
 {
-    LONG cpuCount;
     SHV_DPC_CONTEXT dpcContext;
     UNREFERENCED_PARAMETER(RegistryPath);
-
-    //
-    // Allocate the global shared data which all virtual processors will share.
-    //
-    cpuCount = KeQueryActiveProcessorCountEx(ALL_PROCESSOR_GROUPS);
-    ShvGlobalData = ExAllocatePoolWithTag(NonPagedPoolNx,
-                                          cpuCount * sizeof(PVOID),
-                                          'ShvA');
-    if (!ShvGlobalData)
-    {
-        return STATUS_HV_INSUFFICIENT_BUFFER;
-    }
-    __stosq((PULONG64)ShvGlobalData, 0, cpuCount);
 
     //
     // Attempt to enter VMX root mode on all logical processors. This will
@@ -99,12 +77,11 @@ ShvInitialize (
     //
     // Note that each VP is responsible for freeing its VP data on failure.
     //
-    if (dpcContext.InitCount != cpuCount)
+    if (dpcContext.InitCount != KeQueryActiveProcessorCountEx(ALL_PROCESSOR_GROUPS))
     {
         DbgPrintEx(77, 0, "The SHV failed to initialize (0x%lX) Failed CPU: %d\n",
                    dpcContext.FailureStatus, dpcContext.FailedCpu);
         NT_ASSERT(dpcContext.FailureStatus != STATUS_SUCCESS);
-        ExFreePoolWithTag(ShvGlobalData, 'ShvA');
         return dpcContext.FailureStatus;
     }
 

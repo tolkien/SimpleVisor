@@ -151,7 +151,7 @@ ShvVpRestoreAfterLaunch (
 typedef struct _SHV_DPC_CONTEXT
 {
     ULONG64 Cr3;
-    volatile LONG InitCount;
+    volatile ULONG InitCount;
     LONG FailedCpu;
     NTSTATUS FailureStatus;
 } SHV_DPC_CONTEXT, *PSHV_DPC_CONTEXT;

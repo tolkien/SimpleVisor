@@ -374,7 +374,7 @@ ShvVmxSetupVmcsForVp (
     // corresponds exactly to the location where RtlCaptureContext will return
     // to inside of ShvVpInitialize.
     //
-    __vmx_vmwrite(GUEST_RSP, context->Rsp);
+    __vmx_vmwrite(GUEST_RSP, (ULONG_PTR)VpData->ShvStackLimit + KERNEL_STACK_SIZE - sizeof(CONTEXT));
     __vmx_vmwrite(GUEST_RIP, (ULONG_PTR)ShvVpRestoreAfterLaunch);
     __vmx_vmwrite(GUEST_RFLAGS, context->EFlags);
 

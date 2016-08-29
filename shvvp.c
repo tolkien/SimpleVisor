@@ -85,10 +85,20 @@ ShvVpRestoreAfterLaunch (
     VOID
     )
 {
-    PSHV_VP_DATA vpData = ShvGlobalData[KeGetCurrentProcessorNumberEx(NULL)];
+    PSHV_VP_DATA vpData;
 
     //
-    // Record that VMX is now enabled
+    // Get the per-processor data. This routine temporarily executes on the
+    // same stack as the hypervisor (using no real stack space except the home
+    // registers), so we can retrieve the VP the same way the hypervisor does.
+    //
+    vpData = (PSHV_VP_DATA)((ULONG_PTR)_AddressOfReturnAddress() +
+                            sizeof(CONTEXT) -
+                            KERNEL_STACK_SIZE);
+
+    //
+    // Record that VMX is now enabled by returning back to ShvVpInitialize with
+    // the Alignment Check (AC) bit set.
     //
     vpData->ContextFrame.EFlags |= EFLAGS_ALIGN_CHECK;
 
@@ -213,6 +223,7 @@ ShvVpCallbackDpc (
 {
     PSHV_DPC_CONTEXT dpcContext = Context;
     ULONG cpuIndex;
+    PSHV_VP_DATA vpData;
     UNREFERENCED_PARAMETER(Dpc);
 
     //
@@ -234,8 +245,8 @@ ShvVpCallbackDpc (
         //
         // Allocate the per-VP data for this logical processor
         //
-        ShvGlobalData[cpuIndex] = ShvVpAllocateData();
-        if (ShvGlobalData[cpuIndex] == NULL)
+        vpData = ShvVpAllocateData();
+        if (vpData == NULL)
         {
             dpcContext->FailureStatus = STATUS_HV_NO_RESOURCES;
             goto Quickie;
@@ -246,12 +257,12 @@ ShvVpCallbackDpc (
         // all virtual processors, regardless of which process the current LP
         // has interrupted, can share the correct kernel address space.
         //
-        ShvGlobalData[cpuIndex]->SystemDirectoryTableBase = dpcContext->Cr3;
+        vpData->SystemDirectoryTableBase = dpcContext->Cr3;
 
         //
         // Initialize the virtual processor
         //
-        ShvVpInitialize(ShvGlobalData[cpuIndex]);
+        ShvVpInitialize(vpData);
 
         //
         // Our hypervisor should now be seen as present on this LP,
@@ -262,8 +273,7 @@ ShvVpCallbackDpc (
             //
             // Free the per-processor data
             //
-            MmFreeContiguousMemory(ShvGlobalData[cpuIndex]);
-            ShvGlobalData[cpuIndex] = NULL;
+            MmFreeContiguousMemory(vpData);
             dpcContext->FailureStatus = STATUS_HV_NOT_PRESENT;
             dpcContext->FailedCpu = cpuIndex;
             goto Quickie;
@@ -272,7 +282,7 @@ ShvVpCallbackDpc (
         //
         // This CPU is hyperjacked!
         //
-        InterlockedIncrement(&dpcContext->InitCount);
+        InterlockedIncrement((PLONG)&dpcContext->InitCount);
     }
     else
     {
@@ -286,7 +296,6 @@ ShvVpCallbackDpc (
         // Free the VP data
         //
         //MmFreeContiguousMemory(ShvGlobalData[cpuIndex]);
-        ShvGlobalData[cpuIndex] = NULL;
     }
 
 Quickie:
