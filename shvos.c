@@ -95,6 +95,10 @@ ShvOsErrorToError (
     {
         return STATUS_HV_NOT_PRESENT;
     }
+    if (Error == SHV_STATUS_SUCCESS)
+    {
+        return STATUS_SUCCESS;
+    }
 
     //
     // Unknown/unexpected error
