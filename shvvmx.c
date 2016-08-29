@@ -375,7 +375,7 @@ ShvVmxSetupVmcsForVp (
     // to inside of ShvVpInitialize.
     //
     __vmx_vmwrite(GUEST_RSP, context->Rsp);
-    __vmx_vmwrite(GUEST_RIP, context->Rip);
+    __vmx_vmwrite(GUEST_RIP, (ULONG_PTR)ShvVpRestoreAfterLaunch);
     __vmx_vmwrite(GUEST_RFLAGS, context->EFlags);
 
     //
@@ -464,11 +464,6 @@ ShvVmxLaunchOnVp (
         // Initialize the VMCS, both guest and host state.
         //
         ShvVmxSetupVmcsForVp(VpData);
-        
-        //
-        // Record that VMX is now enabled
-        //
-        VpData->VmxEnabled = 1;
 
         //
         // Launch the VMCS, based on the guest data that was loaded into the

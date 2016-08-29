@@ -143,6 +143,11 @@ ShvVmxEptInitialize (
     _In_ PSHV_VP_DATA VpData
     );
 
+DECLSPEC_NORETURN
+VOID
+ShvVpRestoreAfterLaunch (
+    VOID
+    );
 
 typedef struct _SHV_DPC_CONTEXT
 {

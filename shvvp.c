@@ -79,6 +79,29 @@ ShvCaptureSpecialRegisters (
     _sldt(&SpecialRegisters->Ldtr);
 }
 
+DECLSPEC_NORETURN
+VOID
+ShvVpRestoreAfterLaunch (
+    VOID
+    )
+{
+    PSHV_VP_DATA vpData = ShvGlobalData[KeGetCurrentProcessorNumberEx(NULL)];
+
+    //
+    // Record that VMX is now enabled
+    //
+    vpData->VmxEnabled = 1;
+
+    //
+    // And finally, restore the context, so that all register and stack
+    // state is finally restored. Note that by continuing to reference the
+    // per-VP data this way, the compiler will continue to generate non-
+    // optimized accesses, guaranteeing that no previous register state
+    // will be used.
+    //
+    RtlRestoreContext(&vpData->ContextFrame, NULL);
+}
+
 VOID
 ShvVpInitialize (
     _In_ PSHV_VP_DATA Data,
@@ -114,34 +137,14 @@ ShvVpInitialize (
     // variable combined with an API call, we also make sure that the compiler
     // will not optimize this access in any way, even on LTGC/Ox builds.
     //
-    if (ShvGlobalData[KeGetCurrentProcessorNumberEx(NULL)]->VmxEnabled == 1)
+    if (ShvGlobalData[KeGetCurrentProcessorNumberEx(NULL)]->VmxEnabled == 0)
     {
         //
-        // We now indicate that the VM has launched, and that we are about to
-        // restore the GPRs back to their original values. This will have the
-        // effect of putting us yet *AGAIN* at the previous line of code, but
-        // this time the value of VmxEnabled will be two, bypassing the if and
-        // else if checks.
+        // If we are in this branch comparison, it means that we have not yet
+        // attempted to launch the VM, nor that we have launched it. In other
+        // words, this is the first time in ShvVpInitialize. Because of this,
+        // we are free to use all register state, as it is ours to use.
         //
-        ShvGlobalData[KeGetCurrentProcessorNumberEx(NULL)]->VmxEnabled = 2;
-
-        //
-        // And finally, restore the context, so that all register and stack
-        // state is finally restored. Note that by continuing to reference the
-        // per-VP data this way, the compiler will continue to generate non-
-        // optimized accesses, guaranteeing that no previous register state
-        // will be used.
-        //
-        RtlRestoreContext(&ShvGlobalData[KeGetCurrentProcessorNumberEx(NULL)]->ContextFrame, NULL);
-    }
-    //
-    // If we are in this branch comparison, it means that we have not yet
-    // attempted to launch the VM, nor that we have launched it. In other
-    // words, this is the first time in ShvVpInitialize. Because of this,
-    // we are free to use all register state, as it is ours to use.
-    //
-    else if (Data->VmxEnabled == 0)
-    {
         //
         // First, capture the value of the PML4 for the SYSTEM process, so that
         // all virtual processors, regardless of which process the current LP

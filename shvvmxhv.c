@@ -16,7 +16,7 @@ Author:
 
 Environment:
 
-    Hypervisor mode only, IRQL DIRQL_MAX
+    Hypervisor mode only, IRQL MAX_IRQL
 
 --*/
 
