@@ -154,7 +154,6 @@ ShvVpUninitialize (
     //
     __cpuidex(cpuInfo, 0x41414141, 0x42424242);
     vpData = (PSHV_VP_DATA)((ULONG64)cpuInfo[0] << 32 | cpuInfo[1]);
-    DbgPrintEx(77, 0, "DAta: 0x%p\n", vpData);
     MmFreeContiguousMemory(vpData);
 
     //
