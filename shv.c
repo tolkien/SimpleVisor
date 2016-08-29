@@ -100,8 +100,8 @@ ShvInitialize (
     //
     if (dpcContext.InitMask != ((1ULL << cpuCount) - 1))
     {
-        DbgPrintEx(77, 0, "The SHV failed to initialize. CPU Mask: %llx\n",
-                   dpcContext.InitMask);
+        DbgPrintEx(77, 0, "The SHV failed to initialize (0x%lX) CPU Mask: %llx\n",
+                   dpcContext.FailureStatus, dpcContext.InitMask);
         NT_ASSERT(dpcContext.FailureStatus != STATUS_SUCCESS);
         ExFreePoolWithTag(ShvGlobalData, 'ShvA');
         return dpcContext.FailureStatus;
