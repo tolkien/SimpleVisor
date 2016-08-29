@@ -294,7 +294,7 @@ ShvVpCallbackDpc (
         //
         // Tear down the virtual processor
         //
-        ShvVpUninitialize(ShvGlobalData[cpuIndex]);
+        ShvVpUninitialize();
         NT_ASSERT(ShvIsOurHypervisorPresent() == FALSE);
 
         //
