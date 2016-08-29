@@ -49,7 +49,7 @@ ShvVmxEptInitialize (
     //
     // Construct EPT identity map for every 1GB of RAM
     //
-    __stosq((PULONG64)VpData->Epdpt, tempEpdpte.AsUlonglong, PDPTE_ENTRY_COUNT);
+    __stosq((UINT64*)VpData->Epdpt, tempEpdpte.AsUlonglong, PDPTE_ENTRY_COUNT);
     for (i = 0; i < PDPTE_ENTRY_COUNT; i++) VpData->Epdpt[i].PageFrameNumber = i;
 }
 
@@ -169,7 +169,7 @@ ShvVmxSetupVmcsForVp (
     //
     // Begin by setting the link pointer to the required value for 4KB VMCS.
     //
-    __vmx_vmwrite(VMCS_LINK_POINTER, MAXULONG64);
+    __vmx_vmwrite(VMCS_LINK_POINTER, ~0ULL);
 
     //
     // Configure the EPTP
@@ -330,16 +330,16 @@ ShvVmxSetupVmcsForVp (
     //
     // Now load the GDT itself
     //
-    __vmx_vmwrite(GUEST_GDTR_BASE, (ULONG_PTR)state->Gdtr.Base);
+    __vmx_vmwrite(GUEST_GDTR_BASE, (uintptr_t)state->Gdtr.Base);
     __vmx_vmwrite(GUEST_GDTR_LIMIT, state->Gdtr.Limit);
-    __vmx_vmwrite(HOST_GDTR_BASE, (ULONG_PTR)state->Gdtr.Base);
+    __vmx_vmwrite(HOST_GDTR_BASE, (uintptr_t)state->Gdtr.Base);
 
     //
     // And then the IDT
     //
-    __vmx_vmwrite(GUEST_IDTR_BASE, (ULONG_PTR)state->Idtr.Base);
+    __vmx_vmwrite(GUEST_IDTR_BASE, (uintptr_t)state->Idtr.Base);
     __vmx_vmwrite(GUEST_IDTR_LIMIT, state->Idtr.Limit);
-    __vmx_vmwrite(HOST_IDTR_BASE, (ULONG_PTR)state->Idtr.Base);
+    __vmx_vmwrite(HOST_IDTR_BASE, (uintptr_t)state->Idtr.Base);
 
     //
     // Load CR0
@@ -374,8 +374,8 @@ ShvVmxSetupVmcsForVp (
     // corresponds exactly to the location where RtlCaptureContext will return
     // to inside of ShvVpInitialize.
     //
-    __vmx_vmwrite(GUEST_RSP, (ULONG_PTR)VpData->ShvStackLimit + KERNEL_STACK_SIZE - sizeof(CONTEXT));
-    __vmx_vmwrite(GUEST_RIP, (ULONG_PTR)ShvVpRestoreAfterLaunch);
+    __vmx_vmwrite(GUEST_RSP, (uintptr_t)VpData->ShvStackLimit + KERNEL_STACK_SIZE - sizeof(CONTEXT));
+    __vmx_vmwrite(GUEST_RIP, (uintptr_t)ShvVpRestoreAfterLaunch);
     __vmx_vmwrite(GUEST_RFLAGS, context->EFlags);
 
     //
@@ -388,8 +388,8 @@ ShvVmxSetupVmcsForVp (
     // the ones that RtlCaptureContext will perform.
     //
     C_ASSERT((KERNEL_STACK_SIZE - sizeof(CONTEXT)) % 16 == 0);
-    __vmx_vmwrite(HOST_RSP, (ULONG_PTR)VpData->ShvStackLimit + KERNEL_STACK_SIZE - sizeof(CONTEXT));
-    __vmx_vmwrite(HOST_RIP, (ULONG_PTR)ShvVmxEntry);
+    __vmx_vmwrite(HOST_RSP, (uintptr_t)VpData->ShvStackLimit + KERNEL_STACK_SIZE - sizeof(CONTEXT));
+    __vmx_vmwrite(HOST_RIP, (uintptr_t)ShvVmxEntry);
 }
 
 UINT8

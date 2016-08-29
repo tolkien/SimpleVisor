@@ -23,8 +23,6 @@ Environment:
 
 #pragma once
 
-#include "vmx.h"
-
 #define SHV_STATUS_SUCCESS          0
 #define SHV_STATUS_NOT_AVAILABLE    -1
 #define SHV_STATUS_NO_RESOURCES     -2
@@ -32,7 +30,7 @@ Environment:
 
 typedef struct _SHV_CALLBACK_CONTEXT
 {
-    ULONG64 Cr3;
+    UINT64 Cr3;
     volatile long InitCount;
     INT32 FailedCpu;
     INT32 FailureStatus;
@@ -44,55 +42,6 @@ SHV_CPU_CALLBACK (
     _In_ PSHV_CALLBACK_CONTEXT Context
     );
 typedef SHV_CPU_CALLBACK *PSHV_CPU_CALLBACK;
-
-DECLSPEC_NORETURN
-VOID
-__cdecl
-ShvOsRestoreContext (
-    _In_ PCONTEXT ContextRecord
-    );
-
-VOID
-ShvOsCaptureContext (
-    _In_ PCONTEXT ContextRecord
-    );
-
-INT32
-ShvOsGetActiveProcessorCount (
-    VOID
-    );
-
-INT32
-ShvOsGetCurrentProcessorNumber (
-    VOID
-    );
-
-VOID
-ShvOsFreeContiguousAlignedMemory (
-    _In_ VOID* BaseAddress
-    );
-
-VOID*
-ShvOsAllocateContigousAlignedMemory (
-    _In_ SIZE_T Size
-    );
-
-UINT64
-ShvOsGetPhysicalAddress (
-    _In_ VOID* BaseAddress
-    );
-
-VOID
-ShvOsDebugPrint (
-    _In_ const char* Format,
-    ...
-    );
-
-VOID
-ShvOsRunCallbackOnProcessors (
-    _In_ PSHV_CPU_CALLBACK Routine,
-    _In_opt_ VOID* Context
-    );
 
 INT32
 ShvLoad (

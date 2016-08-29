@@ -24,9 +24,12 @@ Environment:
 #pragma warning(disable:4201)
 #pragma warning(disable:4214)
 
-#include <intrin.h>
+#ifdef _WIN64
 #include <basetsd.h>
+#endif
+#include <intrin.h>
 #include "ntint.h"
+#include "vmx.h"
 #include "shv_x.h"
 
 typedef struct _SHV_SPECIAL_REGISTERS
@@ -76,9 +79,9 @@ C_ASSERT((FIELD_OFFSET(SHV_VP_DATA, Epdpt) % PAGE_SIZE) == 0);
 typedef struct _SHV_VP_STATE
 {
     PCONTEXT VpRegs;
-    ULONG_PTR GuestRip;
-    ULONG_PTR GuestRsp;
-    ULONG_PTR GuestEFlags;
+    uintptr_t GuestRip;
+    uintptr_t GuestRsp;
+    uintptr_t GuestEFlags;
     UINT16 ExitReason;
     UINT8 ExitVm;
 } SHV_VP_STATE, *PSHV_VP_STATE;
@@ -91,12 +94,12 @@ ShvVmxEntry (
 
 VOID
 _sldt (
-    _In_ PUINT16 Ldtr
+    _In_ UINT16* Ldtr
     );
 
 VOID
 _str (
-    _In_ PUINT16 Tr
+    _In_ UINT16* Tr
     );
 
 VOID
@@ -142,6 +145,59 @@ VOID
 ShvVpRestoreAfterLaunch (
     VOID
     );
+
+//
+// OS Layer
+//
+DECLSPEC_NORETURN
+VOID
+__cdecl
+ShvOsRestoreContext (
+    _In_ PCONTEXT ContextRecord
+    );
+
+VOID
+ShvOsCaptureContext (
+    _In_ PCONTEXT ContextRecord
+    );
+
+INT32
+ShvOsGetActiveProcessorCount (
+    VOID
+    );
+
+INT32
+ShvOsGetCurrentProcessorNumber (
+    VOID
+    );
+
+VOID
+ShvOsFreeContiguousAlignedMemory (
+    _In_ VOID* BaseAddress
+    );
+
+VOID*
+ShvOsAllocateContigousAlignedMemory (
+    _In_ size_t Size
+    );
+
+UINT64
+ShvOsGetPhysicalAddress (
+    _In_ VOID* BaseAddress
+    );
+
+VOID
+ShvOsDebugPrint (
+    _In_ const char* Format,
+    ...
+    );
+
+VOID
+ShvOsRunCallbackOnProcessors (
+    _In_ PSHV_CPU_CALLBACK Routine,
+    _In_opt_ VOID* Context
+    );
+
 
 extern PSHV_VP_DATA* ShvGlobalData;
 

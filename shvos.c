@@ -67,6 +67,7 @@ typedef struct _SHV_DPC_CONTEXT
 
 #define KGDT64_R3_DATA      0x28
 #define KGDT64_R3_CMTEB     0x50
+#define RPL_MASK            0x03
 
 VOID
 ShvVmxCleanup (

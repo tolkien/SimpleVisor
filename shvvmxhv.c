@@ -38,13 +38,13 @@ ShvVmxResume (
     __vmx_vmresume();
 }
 
-ULONG_PTR
+uintptr_t
 FORCEINLINE
 ShvVmxRead (
     _In_ UINT32 VmcsFieldId
     )
 {
-    SIZE_T FieldData;
+    size_t FieldData;
 
     //
     // Because VMXREAD returns an error code, and not the data, it is painful
@@ -215,12 +215,12 @@ ShvVmxEntryHandler (
     // was actually pushed on the stack right before the call. Go dig into the
     // stack to find it, and overwrite the bogus value that's there now.
     //
-    Context->Rcx = *(PULONG64)((ULONG_PTR)Context - sizeof(Context->Rcx));
+    Context->Rcx = *(UINT64*)((uintptr_t)Context - sizeof(Context->Rcx));
 
     //
     // Get the per-VP data for this processor.
     //
-    vpData = (VOID*)((ULONG_PTR)(Context + 1) - KERNEL_STACK_SIZE);
+    vpData = (VOID*)((uintptr_t)(Context + 1) - KERNEL_STACK_SIZE);
 
     //
     // Build a little stack context to make it easier to keep track of certain
@@ -250,8 +250,8 @@ ShvVmxEntryHandler (
         // Return the VP Data structure in RAX:RBX which is going to be part of
         // the CPUID response that the caller (ShvVpUninitialize) expects back.
         //
-        Context->Rax = (ULONG_PTR)vpData >> 32;
-        Context->Rbx = (ULONG_PTR)vpData & 0xFFFFFFFF;
+        Context->Rax = (uintptr_t)vpData >> 32;
+        Context->Rbx = (uintptr_t)vpData & 0xFFFFFFFF;
 
         //
         // When running in VMX root mode, the processor will set limits of the
@@ -307,7 +307,7 @@ ShvVmxEntryHandler (
         // needed as RtlRestoreContext will fix all the GPRs, and what we just
         // did to RSP will take care of the rest.
         //
-        Context->Rip = (ULONG64)ShvVmxResume;
+        Context->Rip = (UINT64)ShvVmxResume;
     }
 
     //

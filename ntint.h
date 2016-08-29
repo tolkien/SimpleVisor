@@ -28,11 +28,13 @@ Environment:
 #define FORCEINLINE         __forceinline
 #define C_ASSERT(x)         static_assert(x, "Error")
 #define FIELD_OFFSET        offsetof
-#define TRUE                1
-#define FALSE               0
 #define UNREFERENCED_PARAMETER(x)   (x)
 
-#define PAGE_SIZE           4096
+#ifndef TRUE
+#define TRUE                1
+#define FALSE               0
+#endif
+
 #define KERNEL_STACK_SIZE   24 * 1024
 
 typedef struct DECLSPEC_ALIGN(16) _M128A
@@ -128,12 +130,12 @@ typedef struct DECLSPEC_ALIGN(16) _CONTEXT
         };
     };
     M128A VectorRegister[26];
-    ULONG64 VectorControl;
-    ULONG64 DebugControl;
-    ULONG64 LastBranchToRip;
-    ULONG64 LastBranchFromRip;
-    ULONG64 LastExceptionToRip;
-    ULONG64 LastExceptionFromRip;
+    UINT64 VectorControl;
+    UINT64 DebugControl;
+    UINT64 LastBranchToRip;
+    UINT64 LastBranchFromRip;
+    UINT64 LastExceptionToRip;
+    UINT64 LastExceptionFromRip;
 } CONTEXT, *PCONTEXT;
 
 typedef union _LARGE_INTEGER

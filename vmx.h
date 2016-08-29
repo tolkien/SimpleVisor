@@ -31,6 +31,7 @@ Environment:
 #define RPL_MASK            3
 #define MTRR_TYPE_WB        6
 #define EFLAGS_ALIGN_CHECK  0x40000
+#define PAGE_SIZE           4096
 
 typedef struct _KDESCRIPTOR
 {
@@ -409,7 +410,7 @@ enum vmcs_field {
 
 typedef struct _VMX_GDTENTRY64
 {
-    ULONG_PTR Base;
+    uintptr_t Base;
     UINT32 Limit;
     union
     {
@@ -441,7 +442,7 @@ typedef struct _VMX_GDTENTRY64
     UINT16 Selector;
 } VMX_GDTENTRY64, *PVMX_GDTENTRY64;
 
-typedef struct DECLSPEC_ALIGN(PAGE_SIZE) _VMX_VMCS
+typedef struct _VMX_VMCS
 {
     UINT32 RevisionId;
     UINT32 AbortIndicator;

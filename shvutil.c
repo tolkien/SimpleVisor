@@ -36,7 +36,7 @@ ShvUtilConvertGdtEntry (
     // Windows does not use an LDT for these selectors in kernel, so the TI bit
     // should never be set.
     //
-    gdtEntry = (PKGDTENTRY64)((UINT_PTR)GdtBase + (Selector & ~RPL_MASK));
+    gdtEntry = (PKGDTENTRY64)((uintptr_t)GdtBase + (Selector & ~RPL_MASK));
 
     //
     // Write the selector directly 
@@ -59,9 +59,9 @@ ShvUtilConvertGdtEntry (
     //
     VmxGdtEntry->Base = ((gdtEntry->Bytes.BaseHigh << 24) |
                          (gdtEntry->Bytes.BaseMiddle << 16) |
-                         (gdtEntry->BaseLow)) & MAXUINT32;
+                         (gdtEntry->BaseLow)) & ULONG_MAX;
     VmxGdtEntry->Base |= ((gdtEntry->Bits.Type & 0x10) == 0) ?
-                         ((ULONG_PTR)gdtEntry->BaseUpper << 32) : 0;
+                         ((uintptr_t)gdtEntry->BaseUpper << 32) : 0;
 
     //
     // Load the access rights

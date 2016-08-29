@@ -92,7 +92,7 @@ ShvVpRestoreAfterLaunch (
     // same stack as the hypervisor (using no real stack space except the home
     // registers), so we can retrieve the VP the same way the hypervisor does.
     //
-    vpData = (PSHV_VP_DATA)((ULONG_PTR)_AddressOfReturnAddress() +
+    vpData = (PSHV_VP_DATA)((uintptr_t)_AddressOfReturnAddress() +
                             sizeof(CONTEXT) -
                             KERNEL_STACK_SIZE);
 
@@ -182,7 +182,7 @@ ShvVpAllocateData (
         //
         // Zero out the entire data region
         //
-        __stosq((PULONG64)data, 0, sizeof(*data) / sizeof(ULONG64));
+        __stosq((UINT64*)data, 0, sizeof(*data) / sizeof(UINT64));
     }
 
     //
