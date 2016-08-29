@@ -98,10 +98,11 @@ ShvInitialize (
     //
     // Note that each VP is responsible for freeing its VP data on failure.
     //
-    if (dpcContext.InitMask != (1ULL << cpuCount))
+    if (dpcContext.InitMask != ((1ULL << cpuCount) - 1))
     {
         DbgPrintEx(77, 0, "The SHV failed to initialize. CPU Mask: %llx\n",
                    dpcContext.InitMask);
+        NT_ASSERT(dpcContext.FailureStatus != STATUS_SUCCESS);
         ExFreePoolWithTag(ShvGlobalData, 'ShvA');
         return dpcContext.FailureStatus;
     }
