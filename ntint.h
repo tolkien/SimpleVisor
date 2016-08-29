@@ -22,25 +22,6 @@ Environment:
 
 #pragma once
 
-#define DPL_USER            3
-#define DPL_SYSTEM          0
-#define KGDT64_NULL         0x00
-#define KGDT64_R0_CODE      0x10
-#define KGDT64_R0_DATA      0x18
-#define KGDT64_R3_CMCODE    0x20
-#define KGDT64_R3_DATA      0x28
-#define KGDT64_R3_CODE      0x30
-#define KGDT64_SYS_TSS      0x40
-#define KGDT64_R3_CMTEB     0x50
-#define KGDT64_R0_LDT       0x60
-#define MSR_GS_BASE         0xC0000101
-#define MSR_DEBUG_CTL       0x1D9
-#define RPL_MASK            3
-#define MTRR_TYPE_WB        6
-#define EFLAGS_ALIGN_CHECK  0x40000
-#define PAGE_SIZE           4096
-#define KERNEL_STACK_SIZE   24 * 1024
-
 #define VOID                void
 #define DECLSPEC_ALIGN(x)   __declspec(align(x))
 #define DECLSPEC_NORETURN   __declspec(noreturn)
@@ -51,50 +32,8 @@ Environment:
 #define FALSE               0
 #define UNREFERENCED_PARAMETER(x)   (x)
 
-typedef struct _KDESCRIPTOR
-{
-    UINT16 Pad[3];
-    UINT16 Limit;
-    void* Base;
-} KDESCRIPTOR, *PKDESCRIPTOR;
-typedef union _KGDTENTRY64
-{
-    struct
-    {
-        UINT16 LimitLow;
-        UINT16 BaseLow;
-        union
-        {
-            struct
-            {
-                UINT8 BaseMiddle;
-                UINT8 Flags1;
-                UINT8 Flags2;
-                UINT8 BaseHigh;
-            } Bytes;
-            struct 
-            {
-                UINT32 BaseMiddle : 8;
-                UINT32 Type : 5;
-                UINT32 Dpl : 2;
-                UINT32 Present : 1;
-                UINT32 LimitHigh : 4;
-                UINT32 System : 1;
-                UINT32 LongMode : 1;
-                UINT32 DefaultBig : 1;
-                UINT32 Granularity : 1;
-                UINT32 BaseHigh : 8;
-            } Bits;
-        };
-        UINT32 BaseUpper;
-        UINT32 MustBeZero;
-    };
-    struct
-    {
-        INT64 DataLow;
-        INT64 DataHigh;
-    };
-} KGDTENTRY64, *PKGDTENTRY64;
+#define PAGE_SIZE           4096
+#define KERNEL_STACK_SIZE   24 * 1024
 
 typedef struct DECLSPEC_ALIGN(16) _M128A
 {

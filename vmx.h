@@ -21,6 +21,62 @@ Environment:
 --*/
 
 #pragma once
+#pragma warning(disable:4201)
+#pragma warning(disable:4214)
+
+#define DPL_USER            3
+#define DPL_SYSTEM          0
+#define MSR_GS_BASE         0xC0000101
+#define MSR_DEBUG_CTL       0x1D9
+#define RPL_MASK            3
+#define MTRR_TYPE_WB        6
+#define EFLAGS_ALIGN_CHECK  0x40000
+
+typedef struct _KDESCRIPTOR
+{
+    UINT16 Pad[3];
+    UINT16 Limit;
+    void* Base;
+} KDESCRIPTOR, *PKDESCRIPTOR;
+
+typedef union _KGDTENTRY64
+{
+    struct
+    {
+        UINT16 LimitLow;
+        UINT16 BaseLow;
+        union
+        {
+            struct
+            {
+                UINT8 BaseMiddle;
+                UINT8 Flags1;
+                UINT8 Flags2;
+                UINT8 BaseHigh;
+            } Bytes;
+            struct
+            {
+                UINT32 BaseMiddle : 8;
+                UINT32 Type : 5;
+                UINT32 Dpl : 2;
+                UINT32 Present : 1;
+                UINT32 LimitHigh : 4;
+                UINT32 System : 1;
+                UINT32 LongMode : 1;
+                UINT32 DefaultBig : 1;
+                UINT32 Granularity : 1;
+                UINT32 BaseHigh : 8;
+            } Bits;
+        };
+        UINT32 BaseUpper;
+        UINT32 MustBeZero;
+    };
+    struct
+    {
+        INT64 DataLow;
+        INT64 DataHigh;
+    };
+} KGDTENTRY64, *PKGDTENTRY64;
 
 #define CPU_BASED_VIRTUAL_INTR_PENDING          0x00000004
 #define CPU_BASED_USE_TSC_OFFSETING             0x00000008
@@ -459,3 +515,5 @@ C_ASSERT(sizeof(VMX_EPML4E) == sizeof(UINT64));
 
 #define PML4E_ENTRY_COUNT 512
 #define PDPTE_ENTRY_COUNT 512
+
+

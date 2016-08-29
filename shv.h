@@ -27,7 +27,6 @@ Environment:
 #include <intrin.h>
 #include <basetsd.h>
 #include "ntint.h"
-#include "vmx.h"
 #include "shv_x.h"
 
 typedef struct _SHV_SPECIAL_REGISTERS
@@ -88,12 +87,6 @@ typedef struct _SHV_VP_STATE
 VOID
 ShvVmxEntry (
     VOID
-    );
-
-VOID
-ShvVmxCleanup (
-    _In_ UINT16 Data,
-    _In_ UINT16 Teb
     );
 
 VOID

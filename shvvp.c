@@ -153,28 +153,18 @@ ShvVpUnloadCallback (
     // Send the magic shutdown instruction sequence. It will return in EAX:EBX
     // the VP data for the current CPU, which we must free.
     //
+    cpuInfo[0] = cpuInfo[1] = 0;
     __cpuidex(cpuInfo, 0x41414141, 0x42424242);
-    vpData = (PSHV_VP_DATA)((UINT64)cpuInfo[0] << 32 | cpuInfo[1]);
-    ShvOsFreeContiguousAlignedMemory(vpData);
 
     //
-    // The processor will return here after the hypervisor issues a VMXOFF
-    // instruction and restores the CPU context to this location. Unfortunately
-    // because this is done with RtlRestoreContext which returns using "iretq",
-    // this causes the processor to remove the RPL bits off the segments. As
-    // the x64 kernel does not expect kernel-mode code to change the value of
-    // any segments, this results in the DS and ES segments being stuck 0x20,
-    // and the FS segment being stuck at 0x50, until the next context switch.
+    // If SimpleVisor is disabled for some reason, CPUID won't return anything
+    // so don't free any memory. It will unfortunately end up leaked.
     //
-    // If the DPC happened to have interrupted either the idle thread or system
-    // thread, that's perfectly fine (albeit unusual). If the DPC interrupted a
-    // 64-bit long-mode thread, that's also fine. However if the DPC interrupts
-    // a thread in compatibility-mode, running as part of WoW64, it will hit a
-    // GPF instantenously and crash.
-    //
-    // Thus, set the segments to their correct value, one more time, as a fix.
-    //
-    ShvVmxCleanup(KGDT64_R3_DATA | RPL_MASK, KGDT64_R3_CMTEB | RPL_MASK);
+    vpData = (PSHV_VP_DATA)((UINT64)cpuInfo[0] << 32 | cpuInfo[1]);
+    if (vpData != NULL)
+    {
+        ShvOsFreeContiguousAlignedMemory(vpData);
+    }
 }
 
 PSHV_VP_DATA

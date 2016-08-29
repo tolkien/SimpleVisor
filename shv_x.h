@@ -23,6 +23,8 @@ Environment:
 
 #pragma once
 
+#include "vmx.h"
+
 #define SHV_STATUS_SUCCESS          0
 #define SHV_STATUS_NOT_AVAILABLE    -1
 #define SHV_STATUS_NO_RESOURCES     -2
