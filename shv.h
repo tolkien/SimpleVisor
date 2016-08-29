@@ -79,9 +79,23 @@ typedef struct _SHV_VP_STATE
     ULONG_PTR GuestRsp;
     ULONG_PTR GuestEFlags;
     USHORT ExitReason;
-    KIRQL GuestIrql;
     BOOLEAN ExitVm;
 } SHV_VP_STATE, *PSHV_VP_STATE;
+
+typedef struct _SHV_CALLBACK_CONTEXT
+{
+    ULONG64 Cr3;
+    volatile ULONG InitCount;
+    LONG FailedCpu;
+    NTSTATUS FailureStatus;
+} SHV_CALLBACK_CONTEXT, *PSHV_CALLBACK_CONTEXT;
+
+typedef
+VOID
+SHV_CPU_CALLBACK (
+    _In_ PSHV_CALLBACK_CONTEXT Context
+    );
+typedef SHV_CPU_CALLBACK *PSHV_CPU_CALLBACK;
 
 VOID
 ShvVmxEntry (
@@ -142,21 +156,48 @@ ShvVmxEptInitialize (
     _In_ PSHV_VP_DATA VpData
     );
 
+NTSTATUS
+ShvLoad (
+    VOID
+    );
+
+VOID
+ShvUnload (
+    VOID
+    );
+
+DECLSPEC_NORETURN
+VOID
+__cdecl
+ShvOsRestoreContext (
+    _In_ PCONTEXT ContextRecord
+    );
+
+VOID
+ShvOsFreeContiguousAlignedMemory (
+    _In_ PVOID BaseAddress
+    );
+
+PVOID
+ShvOsAllocateContigousAlignedMemory (
+    _In_ SIZE_T Size
+    );
+
 DECLSPEC_NORETURN
 VOID
 ShvVpRestoreAfterLaunch (
     VOID
     );
 
-typedef struct _SHV_DPC_CONTEXT
-{
-    ULONG64 Cr3;
-    volatile ULONG InitCount;
-    LONG FailedCpu;
-    NTSTATUS FailureStatus;
-} SHV_DPC_CONTEXT, *PSHV_DPC_CONTEXT;
+VOID
+ShvOsRunCallbackOnProcessors (
+    _In_ PSHV_CPU_CALLBACK Routine,
+    _In_opt_ PVOID Context
+    );
 
-KDEFERRED_ROUTINE ShvVpCallbackDpc;
+SHV_CPU_CALLBACK ShvVpLoadCallback;
+SHV_CPU_CALLBACK ShvVpUnloadCallback;
 
 extern PSHV_VP_DATA* ShvGlobalData;
 
+#define ShvOsDebugPrint(format, ...) DbgPrintEx(DPFLTR_IHVDRIVER_ID, DPFLTR_ERROR_LEVEL, format, __VA_ARGS__)

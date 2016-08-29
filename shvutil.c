@@ -36,7 +36,6 @@ ShvUtilConvertGdtEntry (
     // Windows does not use an LDT for these selectors in kernel, so the TI bit
     // should never be set.
     //
-    NT_ASSERT((Selector & SELECTOR_TABLE_INDEX) == 0);
     gdtEntry = (PKGDTENTRY64)((ULONG_PTR)GdtBase + (Selector & ~RPL_MASK));
 
     //

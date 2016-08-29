@@ -189,7 +189,6 @@ ShvVmxHandleExit (
         ShvVmxHandleVmx(VpState);
         break;
     default:
-        NT_ASSERT(FALSE);
         break;
     }
 
@@ -203,7 +202,6 @@ ShvVmxHandleExit (
 }
 
 DECLSPEC_NORETURN
-EXTERN_C
 VOID
 ShvVmxEntryHandler (
     _In_ PCONTEXT Context
@@ -211,19 +209,6 @@ ShvVmxEntryHandler (
 {
     SHV_VP_STATE guestContext;
     PSHV_VP_DATA vpData;
-
-    //
-    // Because we run with interrupts disabled during the entire hypervisor's
-    // exit handling, raise the IRQL to HIGH_LEVEL which matches the reality of
-    // the situation. This will block IPIs and the clock interrupt timer, which
-    // means that it's critical to spend as little time here as possible. You
-    // can expect CLOCK_WATCHDOG_TIMEOUT bugchecks to happen otherwise. If you
-    // chose to enable interrupts note that this will result in further crashes
-    // as we are not on a correct OS stack, and you will be hitting crashes if
-    // RtlpCheckStackLimits is ever called, or if PatchGuard validates the RSP
-    // value.
-    //
-    KeRaiseIrql(HIGH_LEVEL, &guestContext.GuestIrql);
 
     //
     // Because we had to use RCX when calling RtlCaptureContext, its true value
@@ -326,17 +311,12 @@ ShvVmxEntryHandler (
     }
 
     //
-    // Restore the IRQL back to the original level
-    //
-    KeLowerIrql(guestContext.GuestIrql);
-
-    //
     // Restore the context to either ShvVmxResume, in which case the CPU's VMX
     // facility will do the "true" return back to the VM (but without restoring
     // GPRs, which is why we must do it here), or to the original guest's RIP,
     // which we use in case an exit was requested. In this case VMX must now be
     // off, and this will look like a longjmp to the original stack and RIP.
     //
-    RtlRestoreContext(Context, NULL);
+    ShvOsRestoreContext(Context);
 }
 

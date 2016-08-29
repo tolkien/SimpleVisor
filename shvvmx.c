@@ -445,7 +445,7 @@ ShvVmxLaunchOnVp (
     //
     // Initialize all the VMX-related MSRs by reading their value
     //
-    for (i = 0; i < RTL_NUMBER_OF(VpData->MsrData); i++)
+    for (i = 0; i < sizeof(VpData->MsrData) / sizeof(VpData->MsrData[0]); i++)
     {
         VpData->MsrData[i].QuadPart = __readmsr(MSR_IA32_VMX_BASIC + i);
     }

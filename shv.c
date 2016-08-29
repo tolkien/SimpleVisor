@@ -24,38 +24,32 @@ Environment:
 
 VOID
 ShvUnload (
-    _In_ PDRIVER_OBJECT DriverObject
+    VOID
     )
 {
-    SHV_DPC_CONTEXT dpcContext;
-    UNREFERENCED_PARAMETER(DriverObject);
-
     //
     // Attempt to exit VMX root mode on all logical processors. This will
-    // broadcast a DPC interrupt which will execute the callback routine in
-    // parallel on the LPs. Send the callback routine a NULL context in order
-    // to indicate that this is the unload, not load, path.
+    // broadcast an interrupt which will execute the callback routine in
+    // parallel on the LPs.
     //
     // Note that if SHV is not loaded on any of the LPs, this routine will not
     // perform any work, but will not fail in any way.
     //
-    dpcContext.Cr3 = 0;
-    KeGenericCallDpc(ShvVpCallbackDpc, &dpcContext);
+    ShvOsRunCallbackOnProcessors(ShvVpUnloadCallback, NULL);
 
     //
     // Indicate unload
     //
-    DbgPrintEx(77, 0, "The SHV has been uninstalled.\n");
+    ShvOsDebugPrint("The SHV has been uninstalled.\n");
 }
 
 NTSTATUS
-ShvInitialize (
-    _In_ PDRIVER_OBJECT DriverObject,
-    _In_ PUNICODE_STRING RegistryPath
+ShvLoad (
+    VOID
     )
 {
-    SHV_DPC_CONTEXT dpcContext;
-    UNREFERENCED_PARAMETER(RegistryPath);
+    SHV_CALLBACK_CONTEXT callbackContext;
+    ULONG cpuCount;
 
     //
     // Attempt to enter VMX root mode on all logical processors. This will
@@ -64,12 +58,11 @@ ShvInitialize (
     // the PML4 of the system process, which is what this driver entrypoint
     // should be executing in.
     //
-    NT_ASSERT(PsGetCurrentProcess() == PsInitialSystemProcess);
-    dpcContext.Cr3 = __readcr3();
-    dpcContext.FailureStatus = STATUS_SUCCESS;
-    dpcContext.FailedCpu = -1;
-    dpcContext.InitCount = 0;
-    KeGenericCallDpc(ShvVpCallbackDpc, &dpcContext);
+    callbackContext.Cr3 = __readcr3();
+    callbackContext.FailureStatus = STATUS_SUCCESS;
+    callbackContext.FailedCpu = -1;
+    callbackContext.InitCount = 0;
+    ShvOsRunCallbackOnProcessors(ShvVpLoadCallback, &callbackContext);
 
     //
     // Check if all LPs are now hypervised. Return the failure code of at least
@@ -77,18 +70,17 @@ ShvInitialize (
     //
     // Note that each VP is responsible for freeing its VP data on failure.
     //
-    if (dpcContext.InitCount != KeQueryActiveProcessorCountEx(ALL_PROCESSOR_GROUPS))
+    cpuCount = KeQueryActiveProcessorCountEx(ALL_PROCESSOR_GROUPS);
+    if (callbackContext.InitCount != cpuCount)
     {
-        DbgPrintEx(77, 0, "The SHV failed to initialize (0x%lX) Failed CPU: %d\n",
-                   dpcContext.FailureStatus, dpcContext.FailedCpu);
-        NT_ASSERT(dpcContext.FailureStatus != STATUS_SUCCESS);
-        return dpcContext.FailureStatus;
+        ShvOsDebugPrint("The SHV failed to initialize (0x%lX) Failed CPU: %d\n",
+                        callbackContext.FailureStatus, callbackContext.FailedCpu);
+        return callbackContext.FailureStatus;
     }
 
     //
-    // Make the driver (and SHV itself) unloadable, and indicate success.
+    // Indicate success.
     //
-    DriverObject->DriverUnload = ShvUnload;
-    DbgPrintEx(77, 0, "The SHV has been installed.\n");
+    ShvOsDebugPrint("The SHV has been installed.\n");
     return STATUS_SUCCESS;
 }

@@ -106,7 +106,7 @@ ShvVpRestoreAfterLaunch (
     // And finally, restore the context, so that all register and stack
     // state is finally restored.
     //
-    RtlRestoreContext(&vpData->ContextFrame, NULL);
+    ShvOsRestoreContext(&vpData->ContextFrame);
 }
 
 VOID
@@ -141,12 +141,13 @@ ShvVpInitialize (
 }
 
 VOID
-ShvVpUninitialize (
-    VOID
+ShvVpUnloadCallback (
+    _In_ PSHV_CALLBACK_CONTEXT Context
     )
 {
     INT cpuInfo[4];
     PSHV_VP_DATA vpData;
+    UNREFERENCED_PARAMETER(Context);
 
     //
     // Send the magic shutdown instruction sequence. It will return in EAX:EBX
@@ -154,7 +155,7 @@ ShvVpUninitialize (
     //
     __cpuidex(cpuInfo, 0x41414141, 0x42424242);
     vpData = (PSHV_VP_DATA)((ULONG64)cpuInfo[0] << 32 | cpuInfo[1]);
-    MmFreeContiguousMemory(vpData);
+    ShvOsFreeContiguousAlignedMemory(vpData);
 
     //
     // The processor will return here after the hypervisor issues a VMXOFF
@@ -181,31 +182,17 @@ ShvVpAllocateData (
     VOID
     )
 {
-    PHYSICAL_ADDRESS lowest, highest;
     PSHV_VP_DATA data;
 
     //
-    // The entire address range is OK for this allocation
-    //
-    lowest.QuadPart = 0;
-    highest.QuadPart = lowest.QuadPart - 1;
-
-    //
-    // Allocate a contiguous chunk of RAM to back this allocation and make sure
-    // that it is RW only, instead of RWX, by using the new Windows 8 API.
-    //
-    data = MmAllocateContiguousNodeMemory(sizeof(SHV_VP_DATA),
-                                          lowest,
-                                          highest,
-                                          lowest,
-                                          PAGE_READWRITE,
-                                          KeGetCurrentNodeNumber());
+    // Allocate a contiguous chunk of RAM to back this allocation
+    data = ShvOsAllocateContigousAlignedMemory(sizeof(*data));
     if (data != NULL)
     {
         //
         // Zero out the entire data region
         //
-        __stosq((PULONG64)data, 0, sizeof(SHV_VP_DATA) / sizeof(ULONG64));
+        __stosq((PULONG64)data, 0, sizeof(*data) / sizeof(ULONG64));
     }
 
     //
@@ -215,17 +202,13 @@ ShvVpAllocateData (
 }
 
 VOID
-ShvVpCallbackDpc (
-    _In_ PRKDPC Dpc,
-    _In_opt_ PVOID Context,
-    _In_opt_ PVOID SystemArgument1,
-    _In_opt_ PVOID SystemArgument2
+ShvVpLoadCallback (
+    _In_ PSHV_CALLBACK_CONTEXT Context
     )
 {
-    PSHV_DPC_CONTEXT dpcContext = Context;
     ULONG cpuIndex;
     PSHV_VP_DATA vpData;
-    UNREFERENCED_PARAMETER(Dpc);
+    NTSTATUS status;
 
     //
     // Detect if the hardware appears to support VMX root mode to start.
@@ -233,75 +216,58 @@ ShvVpCallbackDpc (
     //
     if (!ShvVmxProbe())
     {
-        dpcContext->FailureStatus = STATUS_HV_FEATURE_UNAVAILABLE;
-        goto Quickie;
+        status = STATUS_HV_FEATURE_UNAVAILABLE;
+        goto Failure;
     }
 
     //
-    // Check if we are loading, or unloading, and which CPU this is
+    // Allocate the per-VP data for this logical processor
+    //
+    vpData = ShvVpAllocateData();
+    if (vpData == NULL)
+    {
+        status = STATUS_HV_NO_RESOURCES;
+        goto Failure;
+    }
+
+    //
+    // First, capture the value of the PML4 for the SYSTEM process, so that all
+    // virtual processors, regardless of which process the current LP has
+    // interrupted, can share the correct kernel address space.
+    //
+    vpData->SystemDirectoryTableBase = Context->Cr3;
+
+    //
+    // Initialize the virtual processor
+    //
+    ShvVpInitialize(vpData);
+
+    //
+    // Our hypervisor should now be seen as present on this LP, as the SHV
+    // correctly handles CPUID ECX features register.
+    //
+    if (ShvIsOurHypervisorPresent() == FALSE)
+    {
+        //
+        // Free the per-processor data
+        //
+        ShvOsFreeContiguousAlignedMemory(vpData);
+        status = STATUS_HV_NOT_PRESENT;
+        goto Failure;
+    }
+
+    //
+    // This CPU is hyperjacked!
+    //
+    _InterlockedIncrement((PLONG)&Context->InitCount);
+    return;
+
+Failure:
+    //
+    // Return failure
     //
     cpuIndex = KeGetCurrentProcessorNumberEx(NULL);
-    if (dpcContext->Cr3 != 0)
-    {
-        //
-        // Allocate the per-VP data for this logical processor
-        //
-        vpData = ShvVpAllocateData();
-        if (vpData == NULL)
-        {
-            dpcContext->FailureStatus = STATUS_HV_NO_RESOURCES;
-            goto Quickie;
-        }
-
-        //
-        // First, capture the value of the PML4 for the SYSTEM process, so that
-        // all virtual processors, regardless of which process the current LP
-        // has interrupted, can share the correct kernel address space.
-        //
-        vpData->SystemDirectoryTableBase = dpcContext->Cr3;
-
-        //
-        // Initialize the virtual processor
-        //
-        ShvVpInitialize(vpData);
-
-        //
-        // Our hypervisor should now be seen as present on this LP,
-        // as the SHV correctly handles CPUID ECX features register.
-        //
-        if (ShvIsOurHypervisorPresent() == FALSE)
-        {
-            //
-            // Free the per-processor data
-            //
-            MmFreeContiguousMemory(vpData);
-            dpcContext->FailureStatus = STATUS_HV_NOT_PRESENT;
-            dpcContext->FailedCpu = cpuIndex;
-            goto Quickie;
-        }
-
-        //
-        // This CPU is hyperjacked!
-        //
-        InterlockedIncrement((PLONG)&dpcContext->InitCount);
-    }
-    else
-    {
-        //
-        // Tear down the virtual processor
-        //
-        ShvVpUninitialize();
-        NT_ASSERT(ShvIsOurHypervisorPresent() == FALSE);
-    }
-
-Quickie:
-    //
-    // Wait for all DPCs to synchronize at this point
-    //
-    KeSignalCallDpcSynchronize(SystemArgument2);
-
-    //
-    // Mark the DPC as being complete
-    //
-    KeSignalCallDpcDone(SystemArgument1);
+    Context->FailedCpu = cpuIndex;
+    Context->FailureStatus = status;
+    return;
 }

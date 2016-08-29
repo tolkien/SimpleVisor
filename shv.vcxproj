@@ -27,6 +27,9 @@
     <DriverTargetPlatform>Desktop</DriverTargetPlatform>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <PropertyGroup>
+    <EnableInf2cat>false</EnableInf2cat>
+  </PropertyGroup>
   <ItemDefinitionGroup>
     <ClCompile>
       <Optimization>Full</Optimization>
@@ -41,7 +44,7 @@
     <Link />
     <Link>
       <AdditionalDependencies>$(KernelBufferOverflowLib);$(DDK_LIB_PATH)ntoskrnl.lib;$(DDK_LIB_PATH)hal.lib;$(DDK_LIB_PATH)wmilib.lib</AdditionalDependencies>
-      <EntryPointSymbol>ShvInitialize</EntryPointSymbol>
+      <EntryPointSymbol>DriverEntry</EntryPointSymbol>
       <LinkTimeCodeGeneration>UseLinkTimeCodeGeneration</LinkTimeCodeGeneration>
       <Profile>false</Profile>
       <MergeSections>_TEXT=.text;_PAGE=PAGE</MergeSections>
@@ -52,6 +55,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="shvos.c" />
     <ClCompile Include="shv.c" />
     <ClCompile Include="shvutil.c" />
     <ClCompile Include="shvvmx.c" />
