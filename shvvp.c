@@ -90,7 +90,7 @@ ShvVpRestoreAfterLaunch (
     //
     // Record that VMX is now enabled
     //
-    vpData->ContextFrame.EFlags |= (1 << 18);
+    vpData->ContextFrame.EFlags |= EFLAGS_ALIGN_CHECK;
 
     //
     // And finally, restore the context, so that all register and stack
@@ -123,7 +123,7 @@ ShvVpInitialize (
     // returns here with our registers restored.
     //
     RtlCaptureContext(&Data->ContextFrame);
-    if ((__readeflags() & (1 << 18)) == 0)
+    if ((__readeflags() & EFLAGS_ALIGN_CHECK) == 0)
     {
         //
         // If the AC bit is not set in EFLAGS, it means that we have not yet

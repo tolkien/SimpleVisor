@@ -78,6 +78,8 @@ typedef struct _KDESCRIPTOR {
 
 #define MTRR_TYPE_WB 6
 
+#define EFLAGS_ALIGN_CHECK  0x40000
+
 typedef union _KGDTENTRY64 {
     struct {
         USHORT LimitLow;
