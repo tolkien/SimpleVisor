@@ -21,6 +21,8 @@ Environment:
 --*/
 
 #pragma once
+#pragma warning(disable:4201)
+#pragma warning(disable:4214)
 
 #define VOID                void
 #define DECLSPEC_ALIGN(x)   __declspec(align(x))

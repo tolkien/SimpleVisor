@@ -114,10 +114,16 @@ ShvVpInitialize (
     _In_ PSHV_VP_DATA Data
     )
 {
+    INT32 status;
+
     //
     // Prepare any OS-specific CPU data
     //
-    ShvOsPrepareProcessor(Data);
+    status = ShvOsPrepareProcessor(Data);
+    if (status != SHV_STATUS_SUCCESS)
+    {
+        return status;
+    }
 
     // Read the special control registers for this processor
     // Note: KeSaveStateForHibernate(&Data->HostState) can be used as a Windows
@@ -140,11 +146,11 @@ ShvVpInitialize (
         // If the AC bit is not set in EFLAGS, it means that we have not yet
         // launched the VM. Attempt to initialize VMX on this processor.
         //
-        return ShvVmxLaunchOnVp(Data);
+        status = ShvVmxLaunchOnVp(Data);
     }
 
     //
-    // IF we got here, the hypervisor is running :-)
+    // If we got here, the hypervisor is running :-)
     //
     return SHV_STATUS_SUCCESS;
 }

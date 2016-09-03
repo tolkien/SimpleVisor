@@ -251,7 +251,7 @@ ShvVmxSetupVmcsForVp (
     __vmx_vmwrite(VM_ENTRY_CONTROLS,
                            ShvUtilAdjustMsr(VpData->MsrData[16],
                                             VM_ENTRY_IA32E_MODE));
- 
+
     //
     // Load the CS Segment (Ring 0 Code)
     //
@@ -291,7 +291,7 @@ ShvVmxSetupVmcsForVp (
     __vmx_vmwrite(GUEST_ES_AR_BYTES, vmxGdtEntry.AccessRights);
     __vmx_vmwrite(GUEST_ES_BASE, vmxGdtEntry.Base);
     __vmx_vmwrite(HOST_ES_SELECTOR, context->SegEs & ~RPL_MASK);
- 
+
     //
     // Load the FS Segment (Ring 3 Compatibility-Mode TEB)
     //
@@ -302,7 +302,7 @@ ShvVmxSetupVmcsForVp (
     __vmx_vmwrite(GUEST_FS_BASE, vmxGdtEntry.Base);
     __vmx_vmwrite(HOST_FS_BASE, vmxGdtEntry.Base);
     __vmx_vmwrite(HOST_FS_SELECTOR, context->SegFs & ~RPL_MASK);
- 
+
     //
     // Load the GS Segment (Ring 3 Data if in Compatibility-Mode, MSR-based in Long Mode)
     //
@@ -324,7 +324,7 @@ ShvVmxSetupVmcsForVp (
     __vmx_vmwrite(GUEST_TR_BASE, vmxGdtEntry.Base);
     __vmx_vmwrite(HOST_TR_BASE, vmxGdtEntry.Base);
     __vmx_vmwrite(HOST_TR_SELECTOR, state->Tr & ~RPL_MASK);
- 
+
     //
     // Load the Local Descriptor Table (Ring 0 LDT on Redstone)
     //

@@ -70,7 +70,7 @@
   </ItemGroup>
   <ItemGroup>
     <MASM Include="shvvmxhvx64.asm" />
-    <MASM Include="shvx64.asm" />
+    <MASM Include="shvosx64.asm" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

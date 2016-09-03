@@ -128,7 +128,7 @@ ShvOsUnprepareProcessor (
     _In_ PSHV_VP_DATA VpData
     );
 
-VOID
+INT32
 ShvOsPrepareProcessor (
     _In_ PSHV_VP_DATA VpData
     );
