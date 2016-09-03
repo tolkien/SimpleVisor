@@ -55,12 +55,15 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="shvos.c" />
     <ClCompile Include="shv.c" />
     <ClCompile Include="shvutil.c" />
     <ClCompile Include="shvvmx.c" />
     <ClCompile Include="shvvmxhv.c" />
     <ClCompile Include="shvvp.c" />
+    <ClCompile Include="nt\shvos.c" />
+    <ClCompile Include="uefi\shvos.c">
+      <ExcludedFromBuild>true</ExcludedFromBuild>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="shv.h" />
@@ -70,7 +73,10 @@
   </ItemGroup>
   <ItemGroup>
     <MASM Include="shvvmxhvx64.asm" />
-    <MASM Include="shvosx64.asm" />
+    <MASM Include="nt\shvosx64.asm" />
+    <MASM Include="uefi\shvosx64.asm">
+      <ExcludedFromBuild>true</ExcludedFromBuild>
+    </MASM>
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
