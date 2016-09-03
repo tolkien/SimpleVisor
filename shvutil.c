@@ -32,9 +32,20 @@ ShvUtilConvertGdtEntry (
     PKGDTENTRY64 gdtEntry;
 
     //
-    // Read the GDT entry at the given selector, masking out the RPL bits. x64
-    // Windows does not use an LDT for these selectors in kernel, so the TI bit
-    // should never be set.
+    // Reject LDT or NULL entries
+    //
+    if ((Selector == 0) ||
+        (Selector & SELECTOR_TABLE_INDEX) != 0)
+    {
+        VmxGdtEntry->Limit = VmxGdtEntry->AccessRights = 0;
+        VmxGdtEntry->Base = 0;
+        VmxGdtEntry->Selector = 0;
+        VmxGdtEntry->Bits.Unusable = TRUE;
+        return;
+    }
+
+    //
+    // Read the GDT entry at the given selector, masking out the RPL bits.
     //
     gdtEntry = (PKGDTENTRY64)((uintptr_t)GdtBase + (Selector & ~RPL_MASK));
 
@@ -59,7 +70,7 @@ ShvUtilConvertGdtEntry (
     //
     VmxGdtEntry->Base = ((gdtEntry->Bytes.BaseHigh << 24) |
                          (gdtEntry->Bytes.BaseMiddle << 16) |
-                         (gdtEntry->BaseLow)) & ULONG_MAX;
+                         (gdtEntry->BaseLow)) & 0xFFFFFFFF;
     VmxGdtEntry->Base |= ((gdtEntry->Bits.Type & 0x10) == 0) ?
                          ((uintptr_t)gdtEntry->BaseUpper << 32) : 0;
 

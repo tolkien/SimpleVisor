@@ -73,7 +73,7 @@ ShvCaptureSpecialRegisters (
     __sidt(&SpecialRegisters->Idtr.Limit);
 
     //
-    // Use assembly to get these two
+    // Use OS-specific functions to get these two
     //
     _str(&SpecialRegisters->Tr);
     _sldt(&SpecialRegisters->Ldtr);
@@ -109,12 +109,16 @@ ShvVpRestoreAfterLaunch (
     ShvOsRestoreContext(&vpData->ContextFrame);
 }
 
-VOID
+INT32
 ShvVpInitialize (
     _In_ PSHV_VP_DATA Data
     )
 {
     //
+    // Prepare any OS-specific CPU data
+    //
+    ShvOsPrepareProcessor(Data);
+
     // Read the special control registers for this processor
     // Note: KeSaveStateForHibernate(&Data->HostState) can be used as a Windows
     // specific undocumented function that can also get this data.
@@ -136,8 +140,13 @@ ShvVpInitialize (
         // If the AC bit is not set in EFLAGS, it means that we have not yet
         // launched the VM. Attempt to initialize VMX on this processor.
         //
-        ShvVmxLaunchOnVp(Data);
+        return ShvVmxLaunchOnVp(Data);
     }
+
+    //
+    // IF we got here, the hypervisor is running :-)
+    //
+    return SHV_STATUS_SUCCESS;
 }
 
 VOID
@@ -163,32 +172,45 @@ ShvVpUnloadCallback (
     vpData = (PSHV_VP_DATA)((UINT64)cpuInfo[0] << 32 | (UINT32)cpuInfo[1]);
     if (vpData != NULL)
     {
-        ShvOsFreeContiguousAlignedMemory(vpData);
+        ShvOsFreeContiguousAlignedMemory(vpData, sizeof(*vpData));
     }
 }
 
 PSHV_VP_DATA
 ShvVpAllocateData (
-    VOID
+    _In_ UINT32 CpuCount
     )
 {
     PSHV_VP_DATA data;
 
     //
     // Allocate a contiguous chunk of RAM to back this allocation
-    data = ShvOsAllocateContigousAlignedMemory(sizeof(*data));
+    //
+    data = ShvOsAllocateContigousAlignedMemory(sizeof(*data) * CpuCount);
     if (data != NULL)
     {
         //
         // Zero out the entire data region
         //
-        __stosq((UINT64*)data, 0, sizeof(*data) / sizeof(UINT64));
+        __stosq((UINT64*)data, 0, (sizeof(*data) / sizeof(UINT64)) * CpuCount);
     }
 
     //
     // Return what is hopefully a valid pointer, otherwise NULL.
     //
     return data;
+}
+
+VOID
+ShvVpFreeData (
+    _In_ PSHV_VP_DATA Data,
+    _In_ UINT32 CpuCount
+    )
+{
+    //
+    // Free the contiguous chunk of RAM
+    //
+    ShvOsFreeContiguousAlignedMemory(Data, sizeof(*Data) * CpuCount);
 }
 
 VOID
@@ -212,7 +234,7 @@ ShvVpLoadCallback (
     //
     // Allocate the per-VP data for this logical processor
     //
-    vpData = ShvVpAllocateData();
+    vpData = ShvVpAllocateData(1);
     if (vpData == NULL)
     {
         status = SHV_STATUS_NO_RESOURCES;
@@ -229,7 +251,14 @@ ShvVpLoadCallback (
     //
     // Initialize the virtual processor
     //
-    ShvVpInitialize(vpData);
+    status = ShvVpInitialize(vpData);
+    if (status != SHV_STATUS_SUCCESS)
+    {
+        //
+        // Bail out
+        //
+        goto Failure;
+    }
 
     //
     // Our hypervisor should now be seen as present on this LP, as the SHV
@@ -240,7 +269,7 @@ ShvVpLoadCallback (
         //
         // Free the per-processor data
         //
-        ShvOsFreeContiguousAlignedMemory(vpData);
+        ShvVpFreeData(vpData, 1);
         status = SHV_STATUS_NOT_PRESENT;
         goto Failure;
     }

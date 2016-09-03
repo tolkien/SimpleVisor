@@ -24,14 +24,18 @@ Environment:
 #pragma warning(disable:4201)
 #pragma warning(disable:4214)
 
-#define DPL_USER            3
-#define DPL_SYSTEM          0
-#define MSR_GS_BASE         0xC0000101
-#define MSR_DEBUG_CTL       0x1D9
-#define RPL_MASK            3
-#define MTRR_TYPE_WB        6
-#define EFLAGS_ALIGN_CHECK  0x40000
-#define PAGE_SIZE           4096
+#define DPL_USER                3
+#define DPL_SYSTEM              0
+#define MSR_GS_BASE             0xC0000101
+#define MSR_DEBUG_CTL           0x1D9
+#define RPL_MASK                3
+#define SELECTOR_TABLE_INDEX    0x04
+#define MTRR_TYPE_WB            6
+#define EFLAGS_ALIGN_CHECK      0x40000
+#define AMD64_TSS               9
+#ifndef PAGE_SIZE
+#define PAGE_SIZE               4096
+#endif
 
 typedef struct _KDESCRIPTOR
 {
@@ -78,6 +82,20 @@ typedef union _KGDTENTRY64
         INT64 DataHigh;
     };
 } KGDTENTRY64, *PKGDTENTRY64;
+
+#pragma pack(push,4)
+typedef struct _KTSS64
+{
+    UINT32 Reserved0;
+    UINT64 Rsp0;
+    UINT64 Rsp1;
+    UINT64 Rsp2;
+    UINT64 Ist[8];
+    UINT64 Reserved1;
+    UINT16 Reserved2;
+    UINT16 IoMapBase;
+} KTSS64, *PKTSS64;
+#pragma pack(pop)
 
 #define CPU_BASED_VIRTUAL_INTR_PENDING          0x00000004
 #define CPU_BASED_USE_TSC_OFFSETING             0x00000008
@@ -410,7 +428,7 @@ enum vmcs_field {
 
 typedef struct _VMX_GDTENTRY64
 {
-    uintptr_t Base;
+    UINT64 Base;
     UINT32 Limit;
     union
     {
@@ -511,8 +529,8 @@ typedef struct _VMX_HUGE_PDPTE
     };
 } VMX_HUGE_PDPTE, *PVMX_HUGE_PDPTE;
 
-C_ASSERT(sizeof(VMX_EPTP) == sizeof(UINT64));
-C_ASSERT(sizeof(VMX_EPML4E) == sizeof(UINT64));
+static_assert(sizeof(VMX_EPTP) == sizeof(UINT64), "EPTP Size Mismatch");
+static_assert(sizeof(VMX_EPML4E) == sizeof(UINT64), "EPML4E Size Mismatch");
 
 #define PML4E_ENTRY_COUNT 512
 #define PDPTE_ENTRY_COUNT 512

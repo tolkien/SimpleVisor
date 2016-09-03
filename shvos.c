@@ -62,12 +62,11 @@ RtlRestoreContext (
 typedef struct _SHV_DPC_CONTEXT
 {
     PSHV_CPU_CALLBACK Routine;
-    PSHV_CALLBACK_CONTEXT Context;
+    struct _SHV_CALLBACK_CONTEXT* Context;
 } SHV_DPC_CONTEXT, *PSHV_DPC_CONTEXT;
 
 #define KGDT64_R3_DATA      0x28
 #define KGDT64_R3_CMTEB     0x50
-#define RPL_MASK            0x03
 
 VOID
 ShvVmxCleanup (
@@ -150,6 +149,35 @@ ShvOsDpcRoutine (
     // Mark the DPC as being complete
     //
     KeSignalCallDpcDone(SystemArgument1);
+}
+
+VOID
+ShvOsPrepareProcessor (
+    _In_ PSHV_VP_DATA VpData
+    )
+{
+    //
+    // Nothing to do on NT
+    //
+    UNREFERENCED_PARAMETER(VpData);
+    NOTHING;
+}
+
+VOID
+ShvOsUnprepareProcessor (
+    _In_ PSHV_VP_DATA VpData
+    )
+{
+    //
+    // When running in VMX root mode, the processor will set limits of the
+    // GDT and IDT to 0xFFFF (notice that there are no Host VMCS fields to
+    // set these values). This causes problems with PatchGuard, which will
+    // believe that the GDTR and IDTR have been modified by malware, and
+    // eventually crash the system. Since we know what the original state
+    // of the GDTR and IDTR was, simply restore it now.
+    //
+    __lgdt(&VpData->SpecialRegisters.Gdtr.Limit);
+    __lidt(&VpData->SpecialRegisters.Idtr.Limit);
 }
 
 VOID

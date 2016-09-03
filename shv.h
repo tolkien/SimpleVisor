@@ -24,57 +24,13 @@ Environment:
 #pragma warning(disable:4201)
 #pragma warning(disable:4214)
 
-#ifdef _WIN64
+#ifndef __BASE_H__
 #include <basetsd.h>
 #endif
+#define _INC_MALLOC
 #include <intrin.h>
 #include "ntint.h"
-#include "vmx.h"
 #include "shv_x.h"
-
-typedef struct _SHV_SPECIAL_REGISTERS
-{
-    UINT64 Cr0;
-    UINT64 Cr3;
-    UINT64 Cr4;
-    UINT64 MsrGsBase;
-    UINT16 Tr;
-    UINT16 Ldtr;
-    UINT64 DebugControl;
-    UINT64 KernelDr7;
-    KDESCRIPTOR Idtr;
-    KDESCRIPTOR Gdtr;
-} SHV_SPECIAL_REGISTERS, *PSHV_SPECIAL_REGISTERS;
-
-typedef struct _SHV_VP_DATA
-{
-    union
-    {
-        DECLSPEC_ALIGN(PAGE_SIZE) UINT8 ShvStackLimit[KERNEL_STACK_SIZE];
-        struct
-        {
-            SHV_SPECIAL_REGISTERS SpecialRegisters;
-            CONTEXT ContextFrame;
-            UINT64 SystemDirectoryTableBase;
-            LARGE_INTEGER MsrData[17];
-            UINT64 VmxOnPhysicalAddress;
-            UINT64 VmcsPhysicalAddress;
-            UINT64 MsrBitmapPhysicalAddress;
-            UINT64 EptPml4PhysicalAddress;
-        };
-    };
-
-    DECLSPEC_ALIGN(PAGE_SIZE) UINT8 MsrBitmap[PAGE_SIZE];
-    DECLSPEC_ALIGN(PAGE_SIZE) VMX_EPML4E Epml4[PML4E_ENTRY_COUNT];
-    DECLSPEC_ALIGN(PAGE_SIZE) VMX_HUGE_PDPTE Epdpt[PDPTE_ENTRY_COUNT];
-
-    DECLSPEC_ALIGN(PAGE_SIZE) VMX_VMCS VmxOn;
-    DECLSPEC_ALIGN(PAGE_SIZE) VMX_VMCS Vmcs;
-} SHV_VP_DATA, *PSHV_VP_DATA;
-
-C_ASSERT(sizeof(SHV_VP_DATA) == (KERNEL_STACK_SIZE + 5 * PAGE_SIZE));
-C_ASSERT((FIELD_OFFSET(SHV_VP_DATA, Epml4) % PAGE_SIZE) == 0);
-C_ASSERT((FIELD_OFFSET(SHV_VP_DATA, Epdpt) % PAGE_SIZE) == 0);
 
 typedef struct _SHV_VP_STATE
 {
@@ -86,28 +42,23 @@ typedef struct _SHV_VP_STATE
     UINT8 ExitVm;
 } SHV_VP_STATE, *PSHV_VP_STATE;
 
+typedef struct _SHV_CALLBACK_CONTEXT
+{
+    UINT64 Cr3;
+    volatile long InitCount;
+    INT32 FailedCpu;
+    INT32 FailureStatus;
+} SHV_CALLBACK_CONTEXT, *PSHV_CALLBACK_CONTEXT;
+
+SHV_CPU_CALLBACK ShvVpLoadCallback;
+SHV_CPU_CALLBACK ShvVpUnloadCallback;
 
 VOID
 ShvVmxEntry (
     VOID
     );
 
-VOID
-_sldt (
-    _In_ UINT16* Ldtr
-    );
-
-VOID
-_str (
-    _In_ UINT16* Tr
-    );
-
-VOID
-__lgdt (
-    _In_ VOID* Gdtr
-    );
-
-VOID
+INT32
 ShvVmxLaunchOnVp (
     _In_ PSHV_VP_DATA VpData
     );
@@ -126,7 +77,18 @@ ShvUtilAdjustMsr (
     );
 
 PSHV_VP_DATA
-ShvVpAllocateGlobalData (
+ShvVpAllocateData (
+    _In_ UINT32 CpuCount
+    );
+
+VOID
+ShvVpFreeData  (
+    _In_ PSHV_VP_DATA Data,
+    _In_ UINT32 CpuCount
+    );
+
+INT32
+ShvVmxLaunch (
     VOID
     );
 
@@ -161,6 +123,16 @@ ShvOsCaptureContext (
     _In_ PCONTEXT ContextRecord
     );
 
+VOID
+ShvOsUnprepareProcessor (
+    _In_ PSHV_VP_DATA VpData
+    );
+
+VOID
+ShvOsPrepareProcessor (
+    _In_ PSHV_VP_DATA VpData
+    );
+
 INT32
 ShvOsGetActiveProcessorCount (
     VOID
@@ -173,7 +145,8 @@ ShvOsGetCurrentProcessorNumber (
 
 VOID
 ShvOsFreeContiguousAlignedMemory (
-    _In_ VOID* BaseAddress
+    _In_ VOID* BaseAddress,
+    _In_ size_t Size
     );
 
 VOID*
@@ -186,18 +159,26 @@ ShvOsGetPhysicalAddress (
     _In_ VOID* BaseAddress
     );
 
+#ifndef __BASE_H__
 VOID
 ShvOsDebugPrint (
     _In_ const char* Format,
     ...
     );
+#else
+VOID
+ShvOsDebugPrintWide (
+    _In_ const CHAR16* Format,
+    ...
+    );
+#define ShvOsDebugPrint(format, ...) ShvOsDebugPrintWide(_CRT_WIDE(format), __VA_ARGS__)
+#endif
 
 VOID
 ShvOsRunCallbackOnProcessors (
     _In_ PSHV_CPU_CALLBACK Routine,
     _In_opt_ VOID* Context
     );
-
 
 extern PSHV_VP_DATA* ShvGlobalData;
 

@@ -87,11 +87,14 @@ ShvVmxEnterRootModeOnVp (
     //
     // Ensure that EPT is available with the needed features SimpleVisor uses
     //
-    if (((VpData->MsrData[12].QuadPart & VMX_EPT_PAGE_WALK_4_BIT) == 0) ||
-        ((VpData->MsrData[12].QuadPart & VMX_EPTP_WB_BIT) == 0) ||
-        ((VpData->MsrData[12].QuadPart & VMX_EPT_1GB_PAGE_BIT) == 0))
+    if (((VpData->MsrData[12].QuadPart & VMX_EPT_PAGE_WALK_4_BIT) != 0) &&
+        ((VpData->MsrData[12].QuadPart & VMX_EPTP_WB_BIT) != 0) &&
+        ((VpData->MsrData[12].QuadPart & VMX_EPT_1GB_PAGE_BIT) != 0))
     {
-        return FALSE;
+        //
+        // Enable EPT if these features are supported
+        //
+        VpData->EptControls = SECONDARY_EXEC_ENABLE_EPT | SECONDARY_EXEC_ENABLE_VPID;
     }
 
     //
@@ -172,22 +175,28 @@ ShvVmxSetupVmcsForVp (
     __vmx_vmwrite(VMCS_LINK_POINTER, ~0ULL);
 
     //
-    // Configure the EPTP
+    // Enable EPT features if supported
     //
-    vmxEptp.AsUlonglong = 0;
-    vmxEptp.PageWalkLength = 3;
-    vmxEptp.Type = MTRR_TYPE_WB;
-    vmxEptp.PageFrameNumber = VpData->EptPml4PhysicalAddress / PAGE_SIZE;
+    if (VpData->EptControls != 0)
+    {
+        //
+        // Configure the EPTP
+        //
+        vmxEptp.AsUlonglong = 0;
+        vmxEptp.PageWalkLength = 3;
+        vmxEptp.Type = MTRR_TYPE_WB;
+        vmxEptp.PageFrameNumber = VpData->EptPml4PhysicalAddress / PAGE_SIZE;
 
-    //
-    // Load EPT Root Pointer
-    //
-    __vmx_vmwrite(EPT_POINTER, vmxEptp.AsUlonglong);
+        //
+        // Load EPT Root Pointer
+        //
+        __vmx_vmwrite(EPT_POINTER, vmxEptp.AsUlonglong);
 
-    //
-    // Set VPID to one
-    //
-    __vmx_vmwrite(VIRTUAL_PROCESSOR_ID, 1);
+        //
+        // Set VPID to one
+        //
+        __vmx_vmwrite(VIRTUAL_PROCESSOR_ID, 1);
+    }
 
     //
     // Load the MSR bitmap. Unlike other bitmaps, not having an MSR bitmap will
@@ -208,9 +217,7 @@ ShvVmxSetupVmcsForVp (
                            ShvUtilAdjustMsr(VpData->MsrData[11],
                                             SECONDARY_EXEC_ENABLE_RDTSCP |
                                             SECONDARY_EXEC_XSAVES |
-                                            SECONDARY_EXEC_ENABLE_EPT |
-                                            SECONDARY_EXEC_ENABLE_VPID
-                                            ));
+                                            VpData->EptControls));
 
     //
     // Enable no pin-based options ourselves, but there may be some required by
@@ -254,7 +261,7 @@ ShvVmxSetupVmcsForVp (
     __vmx_vmwrite(GUEST_CS_AR_BYTES, vmxGdtEntry.AccessRights);
     __vmx_vmwrite(GUEST_CS_BASE, vmxGdtEntry.Base);
     __vmx_vmwrite(HOST_CS_SELECTOR, context->SegCs & ~RPL_MASK);
- 
+
     //
     // Load the SS Segment (Ring 0 Data)
     //
@@ -264,7 +271,7 @@ ShvVmxSetupVmcsForVp (
     __vmx_vmwrite(GUEST_SS_AR_BYTES, vmxGdtEntry.AccessRights);
     __vmx_vmwrite(GUEST_SS_BASE, vmxGdtEntry.Base);
     __vmx_vmwrite(HOST_SS_SELECTOR, context->SegSs & ~RPL_MASK);
- 
+
     //
     // Load the DS Segment (Ring 3 Data)
     //
@@ -306,7 +313,7 @@ ShvVmxSetupVmcsForVp (
     __vmx_vmwrite(GUEST_GS_BASE, state->MsrGsBase);
     __vmx_vmwrite(HOST_GS_BASE, state->MsrGsBase);
     __vmx_vmwrite(HOST_GS_SELECTOR, context->SegGs & ~RPL_MASK);
- 
+
     //
     // Load the Task Register (Ring 0 TSS)
     //
@@ -435,7 +442,7 @@ ShvVmxProbe (
     return TRUE;
 }
 
-VOID
+INT32
 ShvVmxLaunchOnVp (
     _In_ PSHV_VP_DATA VpData
     )
@@ -458,26 +465,24 @@ ShvVmxLaunchOnVp (
     //
     // Attempt to enter VMX root mode on this processor.
     //
-    if (ShvVmxEnterRootModeOnVp(VpData))
+    if (ShvVmxEnterRootModeOnVp(VpData) == FALSE)
     {
         //
-        // Initialize the VMCS, both guest and host state.
+        // We could not enter VMX Root mode
         //
-        ShvVmxSetupVmcsForVp(VpData);
-
-        //
-        // Launch the VMCS, based on the guest data that was loaded into the
-        // various VMCS fields by ShvVmxSetupVmcsForVp. This will cause the
-        // processor to jump to the return address of RtlCaptureContext in
-        // ShvVpInitialize, which called us.
-        //
-        __vmx_vmlaunch();
-
-        //
-        // If we got here, either VMCS setup failed in some way, or the launch
-        // did not proceed as planned. Because VmxEnabled is not set to 1, this
-        // will correctly register as a failure.
-        //
-        __vmx_off();
+        return SHV_STATUS_NOT_AVAILABLE;
     }
+
+    //
+    // Initialize the VMCS, both guest and host state.
+    //
+    ShvVmxSetupVmcsForVp(VpData);
+
+    //
+    // Launch the VMCS, based on the guest data that was loaded into the
+    // various VMCS fields by ShvVmxSetupVmcsForVp. This will cause the
+    // processor to jump to ShvVpRestoreAfterLaunch on success, or return
+    // back to the caller on failure.
+    //
+    return ShvVmxLaunch();
 }

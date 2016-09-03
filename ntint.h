@@ -27,7 +27,6 @@ Environment:
 #define DECLSPEC_NORETURN   __declspec(noreturn)
 #define FORCEINLINE         __forceinline
 #define C_ASSERT(x)         static_assert(x, "Error")
-#define FIELD_OFFSET        offsetof
 #define UNREFERENCED_PARAMETER(x)   (x)
 
 #ifndef TRUE

@@ -54,6 +54,31 @@ ShvVmxRead (
     return FieldData;
 }
 
+INT32
+ShvVmxLaunch (
+    VOID
+    )
+{
+    INT32 failureCode;
+
+    //
+    // Launch the VMCS
+    //
+    __vmx_vmlaunch();
+
+    //
+    // If we got here, either VMCS setup failed in some way, or the launch
+    // did not proceed as planned.
+    //
+    failureCode = (INT32)ShvVmxRead(VM_INSTRUCTION_ERROR);
+    __vmx_off();
+
+    //
+    // Return the error back to the caller
+    //
+    return failureCode;
+}
+
 VOID
 ShvVmxHandleInvd (
     VOID
@@ -132,6 +157,7 @@ ShvVmxHandleXsetbv (
     //
     // Simply issue the XSETBV instruction on the native logical processor.
     //
+
     _xsetbv((UINT32)VpState->VpRegs->Rcx,
             VpState->VpRegs->Rdx << 32 |
             VpState->VpRegs->Rax);
@@ -211,7 +237,7 @@ ShvVmxEntryHandler (
     PSHV_VP_DATA vpData;
 
     //
-    // Because we had to use RCX when calling RtlCaptureContext, its true value
+    // Because we had to use RCX when calling ShvOsCaptureContext, its value
     // was actually pushed on the stack right before the call. Go dig into the
     // stack to find it, and overwrite the bogus value that's there now.
     //
@@ -254,19 +280,13 @@ ShvVmxEntryHandler (
         Context->Rbx = (uintptr_t)vpData & 0xFFFFFFFF;
 
         //
-        // When running in VMX root mode, the processor will set limits of the
-        // GDT and IDT to 0xFFFF (notice that there are no Host VMCS fields to
-        // set these values). This causes problems with PatchGuard, which will
-        // believe that the GDTR and IDTR have been modified by malware, and
-        // eventually crash the system. Since we know what the original state
-        // of the GDTR and IDTR was, simply restore it now.
+        // Perform any OS-specific CPU uninitialization work
         //
-        __lgdt(&vpData->SpecialRegisters.Gdtr.Limit);
-        __lidt(&vpData->SpecialRegisters.Idtr.Limit);
+        ShvOsUnprepareProcessor(vpData);
 
         //
-        // Our DPC routine may have interrupted an arbitrary user process, and
-        // not an idle or system thread as usually happens on an idle system.
+        // Our callback routine may have interrupted an arbitrary user process,
+        // and therefore not a thread running with a systemwide page directory.
         // Therefore if we return back to the original caller after turning off
         // VMX, it will keep our current "host" CR3 value which we set on entry
         // to the PML4 of the SYSTEM process. We want to return back with the
