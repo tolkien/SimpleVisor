@@ -1,6 +1,6 @@
 # SimpleVisor
 
-SimpleVisor is a simple, Intel x64 Windows-specific hypervisor with two specific goals: using the least amount of assembly code (10 lines), and having the smallest amount of VMX-related code to support dynamic hyperjacking and unhyperjacking (that is, virtualizing the host state from within the host) while also supporting advanced features such as EPT and VPID.
+SimpleVisor is a simple, portable, Intel x64/EM64T VT-x specific hypervisor with two specific goals: using the least amount of assembly code (10 lines), and having the smallest amount of VMX-related code to support dynamic hyperjacking and unhyperjacking (that is, virtualizing the host state from within the host) while also supporting advanced features such as EPT and VPID. It currently runs on both Windows and in UEFI environments.
 
 ## Introduction
 
@@ -8,7 +8,9 @@ Have you always been curious on how to build a hypervisor? Has Intel's documenta
 
 Not counting the exhaustive comments which explain every single line of code, and specific Windows-related or Intel-related idiosyncrasies, SimpleVisor clocks in at about 500 lines of C code, and 10 lines of x64 assembly code, all while containing the ability to run on every recent version of 64-bit Windows, and supporting dynamic load/unload at runtime.
 
-SimpleVisor can be built with any recent copy of Visual Studio 2015, and while older compilers have not been tested and are not supported, it's likely that they can build the project as well. It's important, however, to keep the various compiler and linker settings as you see them, however.
+Additionally, SimpleVisor utilizes a lightweight OS-library for Windows-specific functionality, separating out the hypervisor pieces from the Windows-specific pieces. Leveraging this portable design, a UEFI version of SimpleVisor is also now available. Note however, that it does not have robust support for MP environments due to issues with UEFI, and that loading an operating system will eventually result in a crash as the OS will hit unimplemented code paths due to its re-configuration of processor resources. Virtualizing the entire boot of the operating system from UEFI is beyond the scope of the project.
+
+SimpleVisor can be built with Visual Studio 2015 Update 3, and while older/newer compilers have not been tested and are not supported, it's likely that they can build the project as well. It's important, however, to keep the various compiler and linker settings as you see them, however.
 
 SimpleVisor has currently been tested on the following platforms successfully:
 
@@ -16,8 +18,10 @@ SimpleVisor has currently been tested on the following platforms successfully:
 * Windows 10 Redstone 1 on a Sandy Bridge Processor (Samsung 930 Laptop)
 * Windows 10 Threshold 2/Redstone 1 on a Skylake Processor (Surface Pro 4 Tablet)
 * Windows 10 Threshold 2 on a Skylake Processor (Dell Inspiron 11-3153 w/ SGX)
+* VMWare Workstation 11, but without EPT (VMWare does not support 1GB EPTs)
+* UEFI 2.4 on an Asus Maximus VII Extreme Motherboard (Custom Desktop)
 
-At this time, it has not been tested on any Virtual Machine, but barring any bugs in the implementations of either Bochs or VMWare, there's no reason why SimpleVisor could not run in those environments as well. However, if your machine is already running under a hypervisor such as Hyper-V or Xen, SimpleVisor will not load.
+At this time, it has not been tested on Bochs, but there's no reason why SimpleVisor could not run in such an environment as well. However, if your machine is already running under a hypervisor such as Hyper-V or Xen, SimpleVisor will not load.
 
 Keep in mind that x86 versions of Windows are expressly not supported, nor are processors earlier than the Nehalem microarchitecture, nor is Windows 7. Support for the latter two is easy to add and exists in certain forks.
 
@@ -31,19 +35,20 @@ The closest project that actually delivers a Windows-centric, modern, and suppor
 
 The express goal of this project, as stated above, was to minimize code in any way possible, without causing negative side-effects, and focusing on the 'bare-metal' needs. This includes:
 
-* Minimizing use of assembly code. If it weren't for the lack of an __lgdt intrinsic, and a workaround for the behavior of a Windows API, only the first 4 instructions of the hypervisor's entry point would require assembly. As it stands, the project has a total of 10 instructions, spread throughout 3 functions. This is a massive departure from other hypervisor projects, which often have multiple hundreds of line of assembly code. A variety of Windows-specific and compiler-specific tricks are used to achieve this, which will be described in the source code.
+* Minimizing use of assembly code. If it weren't for the lack of an __lgdt intrinsic, and a workaround for the behavior of a Windows API, only the first 4 instructions of the hypervisor's entry point would require assembly. As it stands, the project has a total of 10 instructions, spread throughout 3 functions. This is a massive departure from other hypervisor projects, which often have multiple hundreds of line of assembly code. A variety of OS-specific tricks and compiler shortcuts are used to achieve this result.
 * Reducing checks for errors which are unlikely to happen. Given a properly configured, and trusted, set of input data, instructions such as vmx_vmwrite and vmx_vmread should never fail, for example.
 * Removing support for x86, which complicates matters and causes special handling around 64-bit fields.
 * Expressly reducing all possible VM-Exits to only the Intel architecturally defined minimum (CPUID, INVD, VMX Instructions, and XSETBV). This is purposefully done to keep the hypervisor as small as possible, as well as the initialization code.
 * No support for VMCALL. Many hypervisors use VMCALL as a way to exit the hypervisor, which requires assembly programming (there is no intrinsic) and additional exit handling. SimpleVisor uses a CPUID trap instead.
-* Relying on little-known Windows functions to simplify development of the hypervisor, such as Generic DPCs and hibernation contexts.
+* Relying on little-known OS functions to simplify development of the hypervisor, such as Generic DPCs and hibernation contexts on Windows, or the PI MP protocol on UEFI.
 * Supporting EPT/VPID in a very simple fashion, to demonstrate a solid base of the simplest possible implementation of the feature.
+* Portability and isolation of OS-specific routines.
 
-Another implied goal was to support the very latest in hardware features, as even [Bochs][6] doesn't always have the very-latest Intel VMX instructions and/or definitions. These are often found in header files such as "vmcs.h" and "vmx.h" that various projects have at various levels of definition. For example, Xen master has some unreleased VM Exit reasons, but not certain released ones, which Bochs does have, albeit it doesn't have the unreleased ones!
+Another implied goal was to support the very latest in hardware features, as even [Bochs][6] doesn't always have the very-latest Intel VMX instructions and/or definitions. These are often found in header files such as "vmcs.h" and "vmx.h" that various projects have at various levels of definition. For example, Xen master has some unreleased VM Exit reasons, but not certain released ones, which Bochs does have, albeit it doesn't have the unreleased ones! One such example is the usage of 1GB EPT entries, which for example VMWare does not virtualize correctly.
 
 Finally, SimpleVisor is meant to be an educational tool -- it has exhaustive comments explaining all logic behind each line of code, and specific Windows or Intel VMX tips and tricks that allow it to achieve its desired outcome. Various bugs or poorly documented behaviors are called out explicitly.
 
-## Installation
+## Installation on Windows
 
 Because x64 Windows requires all drivers to be signed, you must testsign the SimpleVisor binary. The Visual Studio project file can be setup to do so by using the "Driver Signing" options and enabling "Test Sign" with your own certificate. From the UI, you can also generate your own.
 
@@ -68,6 +73,8 @@ And stop it with
 You must have administrative rights for usage of any of these commands.
 
 ## References
+
+If you would ike to know more about my research or work, I invite you check out my blog at http://www.alex-ionescu.com as well as my training & consulting company at http://www.windows-internals.com
 
 https://github.com/upring/virtdbg
 
