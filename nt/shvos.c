@@ -151,16 +151,16 @@ ShvOsDpcRoutine (
     KeSignalCallDpcDone(SystemArgument1);
 }
 
-VOID
+INT32
 ShvOsPrepareProcessor (
     _In_ PSHV_VP_DATA VpData
     )
 {
     //
-    // Nothing to do on NT
+    // Nothing to do on NT, only return SHV_STATUS_SUCCESS
     //
     UNREFERENCED_PARAMETER(VpData);
-    NOTHING;
+    return SHV_STATUS_SUCCESS;
 }
 
 VOID
