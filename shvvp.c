@@ -261,8 +261,10 @@ ShvVpLoadCallback (
     if (status != SHV_STATUS_SUCCESS)
     {
         //
-        // Bail out
+        // Bail out, free the allocated per-processor data
+        // Can't free it in Failure, since need to distinguish between the different flows
         //
+        ShvVpFreeData(vpData, 1);
         goto Failure;
     }
 
