@@ -224,7 +224,7 @@ ShvVpLoadCallback (
     _In_ PSHV_CALLBACK_CONTEXT Context
     )
 {
-    PSHV_VP_DATA vpData;
+    PSHV_VP_DATA vpData = NULL;
     INT32 status;
 
     //
@@ -262,9 +262,7 @@ ShvVpLoadCallback (
     {
         //
         // Bail out, free the allocated per-processor data
-        // Can't free it in Failure, since need to distinguish between the different flows
         //
-        ShvVpFreeData(vpData, 1);
         goto Failure;
     }
 
@@ -277,7 +275,6 @@ ShvVpLoadCallback (
         //
         // Free the per-processor data
         //
-        ShvVpFreeData(vpData, 1);
         status = SHV_STATUS_NOT_PRESENT;
         goto Failure;
     }
@@ -292,6 +289,10 @@ Failure:
     //
     // Return failure
     //
+    if (vpData != NULL)
+    {
+        ShvVpFreeData(vpData, 1);
+    }
     Context->FailedCpu = ShvOsGetCurrentProcessorNumber();
     Context->FailureStatus = status;
     return;
