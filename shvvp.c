@@ -227,6 +227,8 @@ ShvVpLoadCallback (
     PSHV_VP_DATA vpData;
     INT32 status;
 
+    vpData = NULL;
+    
     //
     // Detect if the hardware appears to support VMX root mode to start.
     // No attempts are made to enable this if it is lacking or disabled.
@@ -261,7 +263,7 @@ ShvVpLoadCallback (
     if (status != SHV_STATUS_SUCCESS)
     {
         //
-        // Bail out
+        // Bail out, free the allocated per-processor data
         //
         goto Failure;
     }
@@ -275,7 +277,6 @@ ShvVpLoadCallback (
         //
         // Free the per-processor data
         //
-        ShvVpFreeData(vpData, 1);
         status = SHV_STATUS_NOT_PRESENT;
         goto Failure;
     }
@@ -290,6 +291,10 @@ Failure:
     //
     // Return failure
     //
+    if (vpData != NULL)
+    {
+        ShvVpFreeData(vpData, 1);
+    }
     Context->FailedCpu = ShvOsGetCurrentProcessorNumber();
     Context->FailureStatus = status;
     return;
