@@ -224,9 +224,11 @@ ShvVpLoadCallback (
     _In_ PSHV_CALLBACK_CONTEXT Context
     )
 {
-    PSHV_VP_DATA vpData = NULL;
+    PSHV_VP_DATA vpData;
     INT32 status;
 
+    vpData = NULL;
+    
     //
     // Detect if the hardware appears to support VMX root mode to start.
     // No attempts are made to enable this if it is lacking or disabled.
