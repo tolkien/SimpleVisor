@@ -43,52 +43,49 @@ include ksamd64.inc
         lgdt    fword ptr [rcx]     ; load the GDTR with the value in parameter 1
         ret                         ; return
     LEAF_END __lgdt, _TEXT$00
+    
+    LEAF_ENTRY ShvOsRestoreContext2, _TEXT$00
+        movaps  xmm0, CxXmm0[rcx]   ;
+        movaps  xmm1, CxXmm1[rcx]   ;
+        movaps  xmm2, CxXmm2[rcx]   ;
+        movaps  xmm3, CxXmm3[rcx]   ;
+        movaps  xmm4, CxXmm4[rcx]   ;
+        movaps  xmm5, CxXmm5[rcx]   ;
+        movaps  xmm6, CxXmm6[rcx]   ; Restore all XMM registers
+        movaps  xmm7, CxXmm7[rcx]   ;
+        movaps  xmm8, CxXmm8[rcx]   ;
+        movaps  xmm9, CxXmm9[rcx]   ;
+        movaps  xmm10, CxXmm10[rcx] ;
+        movaps  xmm11, CxXmm11[rcx] ;
+        movaps  xmm12, CxXmm12[rcx] ;
+        movaps  xmm13, CxXmm13[rcx] ;
+        movaps  xmm14, CxXmm14[rcx] ;
+        movaps  xmm15, CxXmm15[rcx] ;
+        ldmxcsr CxMxCsr[rcx]        ;
 
-    LEAF_ENTRY ShvOsRestoreContext , _TEXT$00
+        mov     rax, CxRax[rcx]     ;
+        mov     rdx, CxRdx[rcx]     ;
+        mov     r8, CxR8[rcx]       ; Restore volatile registers
+        mov     r9, CxR9[rcx]       ;
+        mov     r10, CxR10[rcx]     ;
+        mov     r11, CxR11[rcx]     ;
 
-    movaps  xmm0, xmmword ptr [rcx+1A0h]
-    movaps  xmm1, xmmword ptr [rcx+1B0h]
-    movaps  xmm2, xmmword ptr [rcx+1C0h]
-    movaps  xmm3, xmmword ptr [rcx+1D0h]
-    movaps  xmm4, xmmword ptr [rcx+1E0h]
-    movaps  xmm5, xmmword ptr [rcx+1F0h]
-    movaps  xmm6, xmmword ptr [rcx+200h]
-    movaps  xmm7, xmmword ptr [rcx+210h]
-    movaps  xmm8, xmmword ptr [rcx+220h]
-    movaps  xmm9, xmmword ptr [rcx+230h]
-    movaps  xmm10, xmmword ptr [rcx+240h]
-    movaps  xmm11, xmmword ptr [rcx+250h]
-    movaps  xmm12, xmmword ptr [rcx+260h]
-    movaps  xmm13, xmmword ptr [rcx+270h]
-    movaps  xmm14, xmmword ptr [rcx+280h]
-    movaps  xmm15, xmmword ptr [rcx+290h]
-    ldmxcsr dword ptr [rcx+34h]
+        mov     rbx, CxRbx[rcx]     ;
+        mov     rsi, CxRsi[rcx]     ;
+        mov     rdi, CxRdi[rcx]     ;
+        mov     rbp, CxRbp[rcx]     ; Restore non volatile regsiters
+        mov     r12, CxR12[rcx]     ;
+        mov     r13, CxR13[rcx]     ;
+        mov     r14, CxR14[rcx]     ;
+        mov     r15, CxR15[rcx]     ;
 
-    mov     rax, [rcx+78h]
-    mov     rdx, [rcx+88h]
-    mov     r8, [rcx+0B8h]
-    mov     r9, [rcx+0C0h]
-    mov     r10, [rcx+0C8h]
-    mov     r11, [rcx+0D0h]
-    cli
-
-    mov     rbx, [rcx+90h]
-    mov     rsi, [rcx+0A8h]
-    mov     rdi, [rcx+0B0h]
-    mov     rbp, [rcx+0A0h]
-    mov     r12, [rcx+0D8h]
-    mov     r13, [rcx+0E0h]
-    mov     r14, [rcx+0E8h]
-    mov     r15, [rcx+0F0h]
-
-    push    [rcx+44h]
-    popfq
-
-    mov     rsp, [rcx+98h]
-    push    [rcx+0F8h]
-
-    mov     rcx, [rcx+80h]
-    ret
-    LEAF_END ShvOsRestoreContext, _TEXT$00
+        cli                         ; Disable interrupts
+        push    CxEFlags[rcx]       ; Push RFLAGS on stack
+        popfq                       ; Restore RFLAGS
+        mov     rsp, CxRsp[rcx]     ; Restore old stack
+        push    CxRip[rcx]          ; Push RIP on old stack
+        mov     rcx, CxRcx[rcx]     ; Restore RCX since we spilled it
+        ret                         ; Restore RIP
+    LEAF_END ShvOsRestoreContext2, _TEXT$00
 
     end
