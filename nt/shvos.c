@@ -51,10 +51,9 @@ KeSignalCallDpcSynchronize (
     );
 
 DECLSPEC_NORETURN
-NTSYSAPI
 VOID
 __cdecl
-RtlRestoreContext (
+ShvOsRestoreContext2 (
     _In_ PCONTEXT ContextRecord,
     _In_opt_ struct _EXCEPTION_RECORD * ExceptionRecord
     );
@@ -241,6 +240,14 @@ ShvOsRunCallbackOnProcessors (
     dpcContext.Routine = Routine;
     dpcContext.Context = Context;
     KeGenericCallDpc(ShvOsDpcRoutine, &dpcContext);
+}
+
+VOID
+ShvOsRestoreContext(
+    _In_ PCONTEXT ContextRecord
+    )
+{
+    ShvOsRestoreContext2(ContextRecord, NULL);
 }
 
 VOID

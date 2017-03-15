@@ -93,8 +93,10 @@ ShvVmxEnterRootModeOnVp (
     {
         //
         // Enable EPT if these features are supported
+        // Temporarily Disable
         //
-        VpData->EptControls = SECONDARY_EXEC_ENABLE_EPT | SECONDARY_EXEC_ENABLE_VPID;
+        VpData->EptControls = 0;
+        //VpData->EptControls = SECONDARY_EXEC_ENABLE_EPT | SECONDARY_EXEC_ENABLE_VPID;
     }
 
     //
