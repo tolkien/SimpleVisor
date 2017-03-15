@@ -243,19 +243,6 @@ ShvOsRunCallbackOnProcessors (
     KeGenericCallDpc(ShvOsDpcRoutine, &dpcContext);
 }
 
-DECLSPEC_NORETURN
-VOID
-__cdecl
-ShvOsRestoreContext (
-    _In_ PCONTEXT ContextRecord
-    )
-{
-    //
-    // Windows provides a nice OS function to do this
-    //
-    RtlRestoreContext(ContextRecord, NULL);
-}
-
 VOID
 ShvOsCaptureContext (
     _In_ PCONTEXT ContextRecord
