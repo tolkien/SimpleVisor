@@ -21,7 +21,7 @@ Environment:
 --*/
 
 #include <ntifs.h>
-#include <varargs.h>
+#include <stdarg.h>
 #include "shv_x.h"
 
 NTKERNELAPI
@@ -294,7 +294,7 @@ ShvOsDebugPrint (
     //
     // Call the debugger API
     //
-    va_start(arglist);
+    va_start(arglist, Format);
     vDbgPrintEx(DPFLTR_IHVDRIVER_ID, DPFLTR_ERROR_LEVEL, Format, arglist);
     va_end(arglist);
 }
