@@ -29,13 +29,24 @@ Environment:
 #define MSR_GS_BASE             0xC0000101
 #define MSR_DEBUG_CTL           0x1D9
 #define RPL_MASK                3
-#define SELECTOR_TABLE_INDEX    0x04
+#define MTRR_TYPE_UC            0
+#define MTRR_TYPE_USWC          1
+#define MTRR_TYPE_WT            4
+#define MTRR_TYPE_WP            5
 #define MTRR_TYPE_WB            6
+#define MTRR_TYPE_MAX           7
+#define SELECTOR_TABLE_INDEX    0x04
 #define EFLAGS_ALIGN_CHECK      0x40000
 #define AMD64_TSS               9
 #ifndef PAGE_SIZE
 #define PAGE_SIZE               4096
 #endif
+#define MTRR_MSR_CAPABILITIES   0x0fe
+#define MTRR_MSR_DEFAULT        0x2ff
+#define MTRR_MSR_VARIABLE_BASE  0x200
+#define MTRR_MSR_VARIABLE_MASK  (MTRR_MSR_VARIABLE_BASE+1)
+#define MTRR_PAGE_SIZE          4096
+#define MTRR_PAGE_MASK          (~(MTRR_PAGE_SIZE-1))
 
 typedef struct _KDESCRIPTOR
 {
@@ -96,6 +107,56 @@ typedef struct _KTSS64
     UINT16 IoMapBase;
 } KTSS64, *PKTSS64;
 #pragma pack(pop)
+
+typedef struct _MTRR_CAPABILITIES
+{
+    union
+    {
+        struct
+        {
+            UINT64 VarCnt : 8;
+            UINT64 FixedSupported : 1;
+            UINT64 Reserved : 1;
+            UINT64 WcSupported : 1;
+            UINT64 SmrrSupported : 1;
+            UINT64 Reserved_2 : 52;
+        };
+        UINT64 AsUlonglong;
+    };
+} MTRR_CAPABILITIES, *PMTRR_CAPABILITIES;
+C_ASSERT(sizeof(MTRR_CAPABILITIES) == sizeof(UINT64));
+
+typedef struct _MTRR_VARIABLE_BASE
+{
+    union
+    {
+        struct
+        {
+            UINT64 Type : 8;
+            UINT64 Reserved : 4;
+            UINT64 PhysBase : 36;
+            UINT64 Reserved2 : 16;
+        };
+        UINT64 AsUlonglong;
+    };
+} MTRR_VARIABLE_BASE, *PMTRR_VARIABLE_BASE;
+C_ASSERT(sizeof(MTRR_VARIABLE_BASE) == sizeof(UINT64));
+
+typedef struct _MTRR_VARIABLE_MASK
+{
+    union
+    {
+        struct
+        {
+            UINT64 Reserved : 11;
+            UINT64 Enabled : 1;
+            UINT64 PhysMask : 36;
+            UINT64 Reserved2 : 16;
+        };
+        UINT64 AsUlonglong;
+    };
+} MTRR_VARIABLE_MASK, *PMTRR_VARIABLE_MASK;
+C_ASSERT(sizeof(MTRR_VARIABLE_MASK) == sizeof(UINT64));
 
 #define CPU_BASED_VIRTUAL_INTR_PENDING          0x00000004
 #define CPU_BASED_USE_TSC_OFFSETING             0x00000008
@@ -495,7 +556,9 @@ typedef struct _VMX_EPML4E
             UINT64 Execute : 1;
             UINT64 Reserved : 5;
             UINT64 Accessed : 1;
-            UINT64 SoftwareUse : 3;
+            UINT64 SoftwareUse : 1;
+            UINT64 UserModeExecute : 1;
+            UINT64 SoftwareUse2 : 1;
             UINT64 PageFrameNumber : 36;
             UINT64 ReservedHigh : 4;
             UINT64 SoftwareUseHigh : 12;
@@ -518,7 +581,8 @@ typedef struct _VMX_HUGE_PDPTE
             UINT64 Large : 1;
             UINT64 Accessed : 1;
             UINT64 Dirty : 1;
-            UINT64 SoftwareUse : 2;
+            UINT64 UserModeExecute : 1;
+            UINT64 SoftwareUse : 1;
             UINT64 Reserved : 18;
             UINT64 PageFrameNumber : 18;
             UINT64 ReservedHigh : 4;
@@ -529,8 +593,31 @@ typedef struct _VMX_HUGE_PDPTE
     };
 } VMX_HUGE_PDPTE, *PVMX_HUGE_PDPTE;
 
+typedef struct _VMX_PDPTE
+{
+    union
+    {
+        struct
+        {
+            UINT64 Read : 1;
+            UINT64 Write : 1;
+            UINT64 Execute : 1;
+            UINT64 Reserved : 5;
+            UINT64 Accessed : 1;
+            UINT64 SoftwareUse : 1;
+            UINT64 UserModeExecute : 1;
+            UINT64 SoftwareUse2 : 1;
+            UINT64 PageFrameNumber : 36;
+            UINT64 ReservedHigh : 4;
+            UINT64 SoftwareUseHigh : 12;
+        };
+        UINT64 AsUlonglong;
+    };
+} VMX_PDPTE, *PVMX_PDPTE;
+
 static_assert(sizeof(VMX_EPTP) == sizeof(UINT64), "EPTP Size Mismatch");
 static_assert(sizeof(VMX_EPML4E) == sizeof(UINT64), "EPML4E Size Mismatch");
+static_assert(sizeof(VMX_PDPTE) == sizeof(UINT64), "EPDPTE Size Mismatch");
 
 #define PML4E_ENTRY_COUNT 512
 #define PDPTE_ENTRY_COUNT 512
