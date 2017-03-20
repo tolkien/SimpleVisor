@@ -30,6 +30,8 @@ Environment:
 #define SHV_STATUS_NO_RESOURCES     -2
 #define SHV_STATUS_NOT_PRESENT      -3
 
+#define _1GB (1 * 1024 * 1024 * 1024)
+
 struct _SHV_CALLBACK_CONTEXT;
 
 typedef
@@ -53,6 +55,14 @@ typedef struct _SHV_SPECIAL_REGISTERS
     KDESCRIPTOR Gdtr;
 } SHV_SPECIAL_REGISTERS, *PSHV_SPECIAL_REGISTERS;
 
+typedef struct _SHV_MTRR_RANGE
+{
+    UINT32 Enabled;
+    UINT32 Type;
+    UINT64 PhysicalAddressMin;
+    UINT64 PhysicalAddressMax;
+} SHV_MTRR_RANGE, *PSHV_MTRR_RANGE;
+
 typedef struct _SHV_VP_DATA
 {
     union
@@ -64,6 +74,7 @@ typedef struct _SHV_VP_DATA
             CONTEXT ContextFrame;
             UINT64 SystemDirectoryTableBase;
             LARGE_INTEGER MsrData[17];
+            SHV_MTRR_RANGE MtrrData[16];
             UINT64 VmxOnPhysicalAddress;
             UINT64 VmcsPhysicalAddress;
             UINT64 MsrBitmapPhysicalAddress;

@@ -23,11 +23,102 @@ Environment:
 #include "shv.h"
 
 VOID
+ShvVmxMtrrInitialize (
+    _In_ PSHV_VP_DATA VpData
+    )
+{
+    UINT32 i;
+    MTRR_CAPABILITIES mtrrCapabilities;
+    MTRR_VARIABLE_BASE mtrrBase;
+    MTRR_VARIABLE_MASK mtrrMask;
+    unsigned long bit;
+
+    //
+    // Read the capabilities mask
+    //
+    mtrrCapabilities.AsUlonglong = __readmsr(MTRR_MSR_CAPABILITIES);
+
+    //
+    // Iterate over each variable MTRR
+    //
+    for (i = 0; i < mtrrCapabilities.VarCnt; i++)
+    {
+        //
+        // Capture the value
+        //
+        mtrrBase.AsUlonglong = __readmsr(MTRR_MSR_VARIABLE_BASE + i * 2);
+        mtrrMask.AsUlonglong = __readmsr(MTRR_MSR_VARIABLE_MASK + i * 2);
+
+        //
+        // Check if the MTRR is enabled
+        //
+        VpData->MtrrData[i].Type = (UINT32)mtrrBase.Type;
+        VpData->MtrrData[i].Enabled = (UINT32)mtrrMask.Enabled;
+        if (VpData->MtrrData[i].Enabled != FALSE)
+        {
+            //
+            // Set the base
+            //
+            VpData->MtrrData[i].PhysicalAddressMin = mtrrBase.PhysBase *
+                                                     MTRR_PAGE_SIZE;
+
+            //
+            // Compute the length
+            //
+            _BitScanForward64(&bit, mtrrMask.PhysMask * MTRR_PAGE_SIZE);
+            VpData->MtrrData[i].PhysicalAddressMax = VpData->MtrrData[i].
+                                                     PhysicalAddressMin +
+                                                     (1ULL << bit) - 1;
+        }
+    }
+}
+
+UINT32
+ShvVmxMtrrAdjustEffectiveMemoryType (
+    _In_ PSHV_VP_DATA VpData,
+    _In_ UINT64 SuperPageAddress,
+    _In_ UINT32 CandidateMemoryType
+    )
+{
+    UINT32 i;
+
+    //
+    // Loop each MTRR range
+    //
+    for (i = 0; i < sizeof(VpData->MtrrData) / sizeof(VpData->MtrrData[0]); i++)
+    {
+        //
+        // Check if it's active
+        //
+        if (VpData->MtrrData[i].Enabled != FALSE)
+        {
+            //
+            // Check if this super page falls within the boundary. If a single
+            // physical page (4KB) touches it, we need to override the entire gig.
+            //
+            if (((SuperPageAddress + _1GB) >= VpData->MtrrData[i].PhysicalAddressMin) &&
+                (SuperPageAddress <= VpData->MtrrData[i].PhysicalAddressMax))
+            {
+                //
+                // Override candidate type with MTRR type
+                //
+                CandidateMemoryType = VpData->MtrrData[i].Type;
+            }
+        }
+    }
+
+    //
+    // Return the correct type needed
+    //
+    return CandidateMemoryType;
+}
+
+VOID
 ShvVmxEptInitialize (
     _In_ PSHV_VP_DATA VpData
     )
 {
-    UINT64 i;
+    UINT32 i;
     VMX_HUGE_PDPTE tempEpdpte;
 
     //
@@ -43,14 +134,22 @@ ShvVmxEptInitialize (
     //
     tempEpdpte.AsUlonglong = 0;
     tempEpdpte.Read = tempEpdpte.Write = tempEpdpte.Execute = 1;
-    tempEpdpte.Type = MTRR_TYPE_WB;
     tempEpdpte.Large = 1;
 
     //
     // Construct EPT identity map for every 1GB of RAM
     //
     __stosq((UINT64*)VpData->Epdpt, tempEpdpte.AsUlonglong, PDPTE_ENTRY_COUNT);
-    for (i = 0; i < PDPTE_ENTRY_COUNT; i++) VpData->Epdpt[i].PageFrameNumber = i;
+    for (i = 0; i < PDPTE_ENTRY_COUNT; i++)
+    {
+        //
+        // Set the page frame number (1GB-sized) and adjust the memory type
+        //
+        VpData->Epdpt[i].PageFrameNumber = i;
+        VpData->Epdpt[i].Type = ShvVmxMtrrAdjustEffectiveMemoryType(VpData,
+                                                                    i * _1GB,
+                                                                    MTRR_TYPE_WB);
+    }
 }
 
 UINT8
@@ -93,10 +192,8 @@ ShvVmxEnterRootModeOnVp (
     {
         //
         // Enable EPT if these features are supported
-        // Temporarily Disable
         //
-        VpData->EptControls = 0;
-        //VpData->EptControls = SECONDARY_EXEC_ENABLE_EPT | SECONDARY_EXEC_ENABLE_VPID;
+        VpData->EptControls = SECONDARY_EXEC_ENABLE_EPT | SECONDARY_EXEC_ENABLE_VPID;
     }
 
     //
@@ -458,6 +555,12 @@ ShvVmxLaunchOnVp (
     {
         VpData->MsrData[i].QuadPart = __readmsr(MSR_IA32_VMX_BASIC + i);
     }
+
+    //
+    // Initialize all the MTRR-related MSRs by reading their value and build
+    // range structures to describe their settings
+    //
+    ShvVmxMtrrInitialize(VpData);
 
     //
     // Initialize the EPT structures
