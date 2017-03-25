@@ -23,6 +23,8 @@ Environment:
 #include <ntifs.h>
 #include <stdarg.h>
 #include "shv_x.h"
+#pragma warning(disable:4221)
+#pragma warning(disable:4204)
 
 NTKERNELAPI
 _IRQL_requires_max_(APC_LEVEL)
@@ -58,6 +60,12 @@ ShvOsRestoreContext2 (
     _In_opt_ struct _EXCEPTION_RECORD * ExceptionRecord
     );
 
+VOID
+ShvVmxCleanup (
+    _In_ UINT16 Data,
+    _In_ UINT16 Teb
+    );
+
 typedef struct _SHV_DPC_CONTEXT
 {
     PSHV_CPU_CALLBACK Routine;
@@ -67,11 +75,7 @@ typedef struct _SHV_DPC_CONTEXT
 #define KGDT64_R3_DATA      0x28
 #define KGDT64_R3_CMTEB     0x50
 
-VOID
-ShvVmxCleanup (
-    _In_ UINT16 Data,
-    _In_ UINT16 Teb
-    );
+PVOID g_PowerCallbackRegistration;
 
 NTSTATUS
 FORCEINLINE
@@ -177,6 +181,42 @@ ShvOsUnprepareProcessor (
     //
     __lgdt(&VpData->SpecialRegisters.Gdtr.Limit);
     __lidt(&VpData->SpecialRegisters.Idtr.Limit);
+}
+
+VOID
+PowerCallback (
+    _In_opt_ PVOID CallbackContext,
+    _In_opt_ PVOID Argument1,
+    _In_opt_ PVOID Argument2
+    )
+{
+    UNREFERENCED_PARAMETER(CallbackContext);
+
+    //
+    // Ignore non-Sx changes
+    //
+    if (Argument1 != (PVOID)PO_CB_SYSTEM_STATE_LOCK)
+    {
+        return;
+    }
+
+    //
+    // Check if this is S0->Sx, or Sx->S0
+    //
+    if (ARGUMENT_PRESENT(Argument2))
+    {
+        //
+        // Reload the hypervisor
+        //
+        ShvLoad();
+    }
+    else
+    {
+        //
+        // Unload the hypervisor
+        //
+        ShvUnload();
+    }
 }
 
 VOID
@@ -307,6 +347,11 @@ DriverUnload (
     UNREFERENCED_PARAMETER(DriverObject);
 
     //
+    // Unregister the power callback. We would not have loaded without it
+    //
+    ExUnregisterCallback(g_PowerCallbackRegistration);
+
+    //
     // Unload the hypervisor
     //
     ShvUnload();
@@ -318,12 +363,51 @@ DriverEntry (
     _In_ PUNICODE_STRING RegistryPath
     )
 {
+    NTSTATUS status;
+    PCALLBACK_OBJECT callbackObject;
+    UNICODE_STRING callbackName =
+        RTL_CONSTANT_STRING(L"\\Callback\\PowerState");
+    OBJECT_ATTRIBUTES objectAttributes =
+        RTL_CONSTANT_OBJECT_ATTRIBUTES(&callbackName,
+                                       OBJ_CASE_INSENSITIVE |
+                                       OBJ_KERNEL_HANDLE);
     UNREFERENCED_PARAMETER(RegistryPath);
 
     //
     // Make the driver (and SHV itself) unloadable
     //
     DriverObject->DriverUnload = DriverUnload;
+
+    //
+    // Create the power state callback
+    //
+    status = ExCreateCallback(&callbackObject, &objectAttributes, FALSE, TRUE);
+    if (!NT_SUCCESS(status))
+    {
+        return status;
+    }
+
+    //
+    // Now register our routine with this callback
+    //
+    g_PowerCallbackRegistration = ExRegisterCallback(callbackObject,
+                                                     PowerCallback,
+                                                     NULL);
+
+    //
+    // Dereference it in both cases -- either it's registered, so that is now
+    // taking a reference, and we'll unregister later, or it failed to register
+    // so we failing now, and it's gone.
+    //
+    ObDereferenceObject(callbackObject);
+
+    //
+    // Fail if we couldn't register the power callback
+    //
+    if (g_PowerCallbackRegistration == NULL)
+    {
+        return STATUS_INSUFFICIENT_RESOURCES;
+    }
 
     //
     // Load the hypervisor
