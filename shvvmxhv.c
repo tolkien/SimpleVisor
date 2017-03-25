@@ -270,14 +270,16 @@ ShvVmxEntryHandler (
     // Did we hit the magic exit sequence, or should we resume back to the VM
     // context?
     //
-    if (guestContext.ExitVm)
+    if (guestContext.ExitVm != FALSE)
     {
         //
         // Return the VP Data structure in RAX:RBX which is going to be part of
         // the CPUID response that the caller (ShvVpUninitialize) expects back.
+        // Return confirmation in RCX that we are loaded
         //
         Context->Rax = (uintptr_t)vpData >> 32;
         Context->Rbx = (uintptr_t)vpData & 0xFFFFFFFF;
+        Context->Rcx = 0x43434343;
 
         //
         // Perform any OS-specific CPU uninitialization work

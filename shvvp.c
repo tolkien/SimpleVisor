@@ -172,12 +172,13 @@ ShvVpUnloadCallback (
     __cpuidex(cpuInfo, 0x41414141, 0x42424242);
 
     //
-    // If SimpleVisor is disabled for some reason, CPUID won't return anything
-    // so don't free any memory. It will unfortunately end up leaked.
+    // If SimpleVisor is disabled for some reason, CPUID will return the values
+    // of the highest valid CPUID. We use a magic value to make sure we really
+    // are loaded and returned something valid.
     //
-    vpData = (PSHV_VP_DATA)((UINT64)cpuInfo[0] << 32 | (UINT32)cpuInfo[1]);
-    if (vpData != NULL)
+    if (cpuInfo[2] == 0x43434343)
     {
+        vpData = (PSHV_VP_DATA)((UINT64)cpuInfo[0] << 32 | (UINT32)cpuInfo[1]);
         ShvOsFreeContiguousAlignedMemory(vpData, sizeof(*vpData));
     }
 }
