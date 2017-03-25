@@ -76,7 +76,7 @@ ShvVmxMtrrInitialize (
 UINT32
 ShvVmxMtrrAdjustEffectiveMemoryType (
     _In_ PSHV_VP_DATA VpData,
-    _In_ UINT64 SuperPageAddress,
+    _In_ UINT64 LargePageAddress,
     _In_ UINT32 CandidateMemoryType
     )
 {
@@ -93,11 +93,11 @@ ShvVmxMtrrAdjustEffectiveMemoryType (
         if (VpData->MtrrData[i].Enabled != FALSE)
         {
             //
-            // Check if this super page falls within the boundary. If a single
-            // physical page (4KB) touches it, we need to override the entire gig.
+            // Check if this large page falls within the boundary. If a single
+            // physical page (4KB) touches it, we need to override the entire 2MB.
             //
-            if (((SuperPageAddress + _1GB) >= VpData->MtrrData[i].PhysicalAddressMin) &&
-                (SuperPageAddress <= VpData->MtrrData[i].PhysicalAddressMax))
+            if (((LargePageAddress + _2MB) >= VpData->MtrrData[i].PhysicalAddressMin) &&
+                (LargePageAddress <= VpData->MtrrData[i].PhysicalAddressMax))
             {
                 //
                 // Override candidate type with MTRR type
@@ -118,8 +118,9 @@ ShvVmxEptInitialize (
     _In_ PSHV_VP_DATA VpData
     )
 {
-    UINT32 i;
-    VMX_HUGE_PDPTE tempEpdpte;
+    UINT32 i, j;
+    VMX_PDPTE tempEpdpte;
+    VMX_LARGE_PDE tempEpde;
 
     //
     // Fill out the EPML4E which covers the first 512GB of RAM
@@ -130,12 +131,11 @@ ShvVmxEptInitialize (
     VpData->Epml4[0].PageFrameNumber = ShvOsGetPhysicalAddress(&VpData->Epdpt) / PAGE_SIZE;
 
     //
-    // Fill out a RWX Write-back 1GB EPDPTE
+    // Fill out a RWX PDPTE
     //
     tempEpdpte.AsUlonglong = 0;
     tempEpdpte.Read = tempEpdpte.Write = tempEpdpte.Execute = 1;
-    tempEpdpte.Large = 1;
-
+    
     //
     // Construct EPT identity map for every 1GB of RAM
     //
@@ -143,12 +143,34 @@ ShvVmxEptInitialize (
     for (i = 0; i < PDPTE_ENTRY_COUNT; i++)
     {
         //
-        // Set the page frame number (1GB-sized) and adjust the memory type
+        // Set the page frame number of the PDE table
         //
-        VpData->Epdpt[i].PageFrameNumber = i;
-        VpData->Epdpt[i].Type = ShvVmxMtrrAdjustEffectiveMemoryType(VpData,
-                                                                    i * _1GB,
-                                                                    MTRR_TYPE_WB);
+        VpData->Epdpt[i].PageFrameNumber = ShvOsGetPhysicalAddress(&VpData->Epde[i][0]) / PAGE_SIZE;
+    }
+
+    //
+    // Fill out a RWX Large PDE
+    //
+    tempEpde.AsUlonglong = 0;
+    tempEpde.Read = tempEpde.Write = tempEpde.Execute = 1;
+    tempEpde.Large = 1;
+
+    //
+    // Loop every 1GB of RAM (described by the PDPTE)
+    //
+    __stosq((UINT64*)VpData->Epde, tempEpde.AsUlonglong, PDPTE_ENTRY_COUNT * PDE_ENTRY_COUNT);
+    for (i = 0; i < PDPTE_ENTRY_COUNT; i++)
+    {
+        //
+        // Construct EPT identity map for every 2MB of RAM
+        //
+        for (j = 0; j < PDE_ENTRY_COUNT; j++)
+        {
+            VpData->Epde[i][j].PageFrameNumber = (i * 512) + j;
+            VpData->Epde[i][j].Type = ShvVmxMtrrAdjustEffectiveMemoryType(VpData,
+                                                                          VpData->Epde[i][j].PageFrameNumber * _2MB,
+                                                                          MTRR_TYPE_WB);
+        }
     }
 }
 
@@ -188,7 +210,7 @@ ShvVmxEnterRootModeOnVp (
     //
     if (((VpData->MsrData[12].QuadPart & VMX_EPT_PAGE_WALK_4_BIT) != 0) &&
         ((VpData->MsrData[12].QuadPart & VMX_EPTP_WB_BIT) != 0) &&
-        ((VpData->MsrData[12].QuadPart & VMX_EPT_1GB_PAGE_BIT) != 0))
+        ((VpData->MsrData[12].QuadPart & VMX_EPT_2MB_PAGE_BIT) != 0))
     {
         //
         // Enable EPT if these features are supported
